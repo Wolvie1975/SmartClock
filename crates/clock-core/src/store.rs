@@ -81,7 +81,7 @@ const MIGRATIONS: &[&str] = &[
         list_id     TEXT NOT NULL,
         deleted_utc TEXT NOT NULL
      );",
-    // 5: keep the latest successfully fetched news stories for offline display.
+    // 5: initially keep up to three News stories for offline display.
     "CREATE TABLE news_cache (
         position      INTEGER PRIMARY KEY CHECK(position BETWEEN 0 AND 2),
         title         TEXT NOT NULL,
@@ -90,6 +90,20 @@ const MIGRATIONS: &[&str] = &[
         published_utc TEXT,
         fetched_utc   TEXT NOT NULL
      );",
+    // 6: expand the News cache from three to five stories.
+    "ALTER TABLE news_cache RENAME TO news_cache_v5;
+     CREATE TABLE news_cache (
+        position      INTEGER PRIMARY KEY CHECK(position BETWEEN 0 AND 4),
+        title         TEXT NOT NULL,
+        source        TEXT NOT NULL,
+        url           TEXT NOT NULL,
+        published_utc TEXT,
+        fetched_utc   TEXT NOT NULL
+     );
+     INSERT INTO news_cache
+     SELECT position, title, source, url, published_utc, fetched_utc
+     FROM news_cache_v5 ORDER BY position;
+     DROP TABLE news_cache_v5;",
 ];
 
 const TIME_FMT: &str = "%H:%M";
@@ -705,7 +719,7 @@ impl Store {
     pub fn save_news_cache(&self, stories: &[CachedNewsStory]) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
         tx.execute("DELETE FROM news_cache", [])?;
-        for (position, story) in stories.iter().take(3).enumerate() {
+        for (position, story) in stories.iter().take(5).enumerate() {
             tx.execute(
                 "INSERT INTO news_cache
                  (position, title, source, url, published_utc, fetched_utc)
@@ -1029,10 +1043,10 @@ mod tests {
     }
 
     #[test]
-    fn news_cache_replaces_stories_in_order_and_keeps_three() {
+    fn news_cache_replaces_stories_in_order_and_keeps_five() {
         let s = Store::open_in_memory().unwrap();
         let fetched = utc(12, 0, 0);
-        let stories = (0..4)
+        let stories = (0..6)
             .map(|index| CachedNewsStory {
                 title: format!("Story {index}"),
                 source: "Example".into(),
@@ -1044,13 +1058,52 @@ mod tests {
 
         s.save_news_cache(&stories).unwrap();
         let cached = s.news_cache().unwrap();
-        assert_eq!(cached.len(), 3);
+        assert_eq!(cached.len(), 5);
         assert_eq!(cached[0].title, "Story 0");
-        assert_eq!(cached[2].title, "Story 2");
+        assert_eq!(cached[4].title, "Story 4");
         assert_eq!(cached[0].fetched_utc, fetched);
 
         s.save_news_cache(&stories[1..2]).unwrap();
         assert_eq!(s.news_cache().unwrap(), stories[1..2]);
+    }
+
+    #[test]
+    fn news_cache_migration_expands_capacity_and_preserves_cached_story() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE news_cache (
+                position      INTEGER PRIMARY KEY CHECK(position BETWEEN 0 AND 2),
+                title         TEXT NOT NULL,
+                source        TEXT NOT NULL,
+                url           TEXT NOT NULL,
+                published_utc TEXT,
+                fetched_utc   TEXT NOT NULL
+             );
+             PRAGMA user_version = 5;",
+        )
+        .unwrap();
+        let fetched = utc(12, 0, 0);
+        conn.execute(
+            "INSERT INTO news_cache
+             (position, title, source, url, published_utc, fetched_utc)
+             VALUES (0, 'Cached', 'Example', 'https://example.test/old', ?1, ?2)",
+            params![Some(utc(11, 0, 0)), fetched],
+        )
+        .unwrap();
+
+        let s = Store::init(conn).unwrap();
+        assert_eq!(s.news_cache().unwrap()[0].title, "Cached");
+        let stories = (0..5)
+            .map(|index| CachedNewsStory {
+                title: format!("Story {index}"),
+                source: "Example".into(),
+                url: format!("https://example.test/{index}"),
+                published_utc: None,
+                fetched_utc: fetched,
+            })
+            .collect::<Vec<_>>();
+        s.save_news_cache(&stories).unwrap();
+        assert_eq!(s.news_cache().unwrap().len(), 5);
     }
 
     #[test]

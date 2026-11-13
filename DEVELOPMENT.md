@@ -1,6 +1,6 @@
 # Fedora AI Smart Clock — Development Guide
 
-A full-screen desktop clock and dashboard for a Fedora 45 laptop, written in **Rust + Slint**. It has timers, alarms, reminders, a three-story Google News RSS column with an offline cache, weather, a day timeline, Google Calendar/Tasks integration, and a multi-provider AI assistant.
+A full-screen desktop clock and dashboard for a Fedora 45 laptop, written in **Rust + Slint**. It has timers, alarms, reminders, a five-story Google News RSS column with an offline cache, weather, a day timeline, Google Calendar/Tasks integration, and a multi-provider AI assistant.
 
 | Reference | Link |
 |---|---|
@@ -481,7 +481,7 @@ Create a Desktop app OAuth client ID in Google Cloud Console under APIs & Servic
 
 ### 12.5 News feed
 
-- Fetch the top three stories from Google News RSS at startup and every 15 minutes.
+- Fetch the top five stories from Google News RSS at startup and every 15 minutes.
 - Store the last successful result in SQLite and keep showing it when a fetch fails or the clock is offline.
 - Recalculate relative story ages every minute. Story links open in the system browser and must use HTTPS.
 - Calendar events and birthdays remain in the timeline; they are independent of the News column.

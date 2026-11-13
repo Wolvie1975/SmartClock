@@ -13,7 +13,7 @@ use tokio::runtime::{Builder, Runtime};
 
 use crate::{AppWindow, NewsItem};
 
-const STORY_LIMIT: usize = 3;
+const STORY_LIMIT: usize = 5;
 const REFRESH_INTERVAL: Duration = Duration::from_secs(15 * 60);
 const AGE_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
 

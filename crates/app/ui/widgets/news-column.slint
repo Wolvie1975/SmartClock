@@ -67,7 +67,7 @@ export component NewsColumn inherits VerticalLayout {
         Label { text: "NEWS"; color: Theme.text; vertical-alignment: center; }
         Rectangle { horizontal-stretch: 1; }
         Label {
-            text: root.offline ? "OFFLINE" : "TOP 3";
+            text: root.offline ? "OFFLINE" : "TOP 5";
             color: root.offline ? Theme.muted : Theme.accent-text;
             vertical-alignment: center;
         }
@@ -75,14 +75,21 @@ export component NewsColumn inherits VerticalLayout {
     Rectangle { height: 12px; }
     Rectangle { height: Theme.hairline; background: Theme.line; }
 
-    if root.items.length == 0: Label {
-        text: root.offline ? "NO STORIES CACHED" : "LOADING STORIES…";
-        height: 96px;
-        vertical-alignment: center;
-    }
-    for item in root.items: StoryCard {
-        item: item;
-        open => { root.open-story(item.url); }
+    news-list := Flickable {
+        vertical-stretch: 1;
+        content-height: content.preferred-height;
+        content := VerticalLayout {
+            width: news-list.width;
+            if root.items.length == 0: Label {
+                text: root.offline ? "NO STORIES CACHED" : "LOADING STORIES…";
+                height: 96px;
+                vertical-alignment: center;
+            }
+            for item in root.items: StoryCard {
+                item: item;
+                open => { root.open-story(item.url); }
+            }
+        }
     }
 
     Rectangle { vertical-stretch: 1; }
