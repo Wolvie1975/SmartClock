@@ -190,6 +190,34 @@ impl Reminder {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Assistant conversations
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Conversation {
+    pub id: i64,
+    pub title: String,
+    /// "local" or "cloud".
+    pub mode: String,
+    pub created_utc: DateTime<Utc>,
+    pub updated_utc: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChatMessage {
+    pub id: i64,
+    pub conversation_id: i64,
+    /// "user", "assistant" or "notice" (app messages, never sent to a model).
+    pub role: String,
+    pub content: String,
+    /// "LOCAL · LLAMA3.2:3B", "BUILT-IN · NO AI USED", "CLOUD · SENT OFF DEVICE", …
+    pub route: String,
+    pub cloud: bool,
+    /// What the reply changed, e.g. "TIMER · TEA · 4 MIN".
+    pub actions: String,
+    pub created_utc: DateTime<Utc>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

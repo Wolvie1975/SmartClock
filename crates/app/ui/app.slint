@@ -2,10 +2,11 @@ import { Theme } from "theme.slint";
 import { Label } from "widgets/label.slint";
 import { IdleScreen } from "idle.slint";
 import { Dashboard } from "dashboard.slint";
+import { AssistantScreen } from "assistant.slint";
 import { TimerTakeover, AlarmTakeover } from "takeover.slint";
 
 export { Theme }
-export { Dash, TimerRow, AlarmRow, ReminderRow, Marker, Ring, AlarmPhase, Weather, HourCell, DayCell } from "state.slint";
+export { Dash, TimerRow, AlarmRow, ReminderRow, Marker, Ring, AlarmPhase, Weather, HourCell, DayCell, Chat, ChatMsg, ConvRow } from "state.slint";
 
 export enum Screen { idle, dashboard, assistant, settings }
 export enum Overlay { none, timer, alarm }
@@ -113,9 +114,7 @@ export component AppWindow inherits Window {
                 date-label: root.date-label;
                 day-progress: root.day-progress;
             }
-            if root.screen == Screen.assistant: Rectangle {
-                Label { text: "ASSISTANT — PHASE 3"; }
-            }
+            if root.screen == Screen.assistant: AssistantScreen { }
             if root.screen == Screen.settings: Rectangle {
                 Label { text: "SETTINGS — LATER PHASES"; }
             }

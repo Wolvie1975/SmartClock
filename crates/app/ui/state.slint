@@ -123,3 +123,42 @@ export global Weather {
     in property <[HourCell]> hours;
     in property <[DayCell]> days;
 }
+
+// Assistant screen.
+export struct ConvRow { id: int, title: string, when: string }
+
+export struct ChatMsg {
+    id: int,
+    role: string,        // "user", "assistant", "notice"
+    text: string,
+    route: string,       // "LOCAL · LLAMA3.2:3B", "BUILT-IN · NO AI USED", …
+    cloud: bool,
+    actions: string,     // what it changed
+    can-undo: bool,
+    pending: bool,       // still streaming
+    when: string,        // "9:41 AM"
+}
+
+export global Chat {
+    in property <[ConvRow]> conversations;
+    in property <int> current-id: -1;       // -1 = new, not saved yet
+    in property <string> current-title: "New conversation";
+    in property <bool> cloud;               // this conversation's mode
+    in property <[ChatMsg]> messages;
+    in property <bool> busy;
+    in-out property <string> input;
+
+    // Privacy panel
+    in property <string> local-model;       // "LLAMA3.2:3B"
+    in property <string> local-address;     // "127.0.0.1:11434"
+    in property <string> local-status: "CHECKING…";
+    in property <string> cloud-status: "NOT SET UP";
+
+    callback new-conversation();
+    callback select(int);
+    callback delete(int);
+    callback send(string);
+    callback set-cloud(bool);
+    callback undo();
+    callback stop();
+}

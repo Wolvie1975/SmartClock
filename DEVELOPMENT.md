@@ -535,7 +535,7 @@ X-GNOME-Autostart-enabled=true
 ### Phase 3: Assistant
 - [ ] `ai` crate: trait, OpenAI-compatible adapter (Ollama first, via its `/v1` endpoint) ✓, then Anthropic (raw HTTP; there is no official Rust SDK), then Gemini
 - [x] Tool calls wired to the `clock-core` actions, with UNDO (command bar → answer card; full Assistant screen next)
-- [ ] Assistant screen: conversations, transcript with route labels and cloud tag, routing switch
+- [x] Assistant screen: conversations (saved in SQLite, migration 3), transcript with route labels, LOCAL / CLOUD switch, privacy panel; clock commands answered BUILT-IN with UNDO
 - [ ] Settings → AI & Models: local model (Ollama URL + model), cloud provider + model (key in the keyring)
 
 ### Phase 4: Voice

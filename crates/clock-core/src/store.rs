@@ -4,7 +4,9 @@
 //! deterministic. Text columns: wall-clock times "HH:MM", dates "YYYY-MM-DD";
 //! UTC instants use rusqlite's chrono encoding.
 
-use crate::model::{local_to_utc, next_fire_local, Alarm, Reminder, Source, Timer};
+use crate::model::{
+    local_to_utc, next_fire_local, Alarm, ChatMessage, Conversation, Reminder, Source, Timer,
+};
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use rusqlite::{params, types::Type, Connection, OptionalExtension, Row};
 use std::path::{Path, PathBuf};
@@ -53,6 +55,25 @@ const MIGRATIONS: &[&str] = &[
         ends_utc       TEXT,
         paused_left_ms INTEGER
      );",
+    // 3: assistant conversations
+    "CREATE TABLE conversations (
+        id          INTEGER PRIMARY KEY,
+        title       TEXT    NOT NULL,
+        mode        TEXT    NOT NULL DEFAULT 'local',
+        created_utc TEXT    NOT NULL,
+        updated_utc TEXT    NOT NULL
+     );
+     CREATE TABLE messages (
+        id              INTEGER PRIMARY KEY,
+        conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+        role            TEXT    NOT NULL,
+        content         TEXT    NOT NULL,
+        route           TEXT    NOT NULL DEFAULT '',
+        cloud           INTEGER NOT NULL DEFAULT 0,
+        actions         TEXT    NOT NULL DEFAULT '',
+        created_utc     TEXT    NOT NULL
+     );
+     CREATE INDEX messages_by_conversation ON messages(conversation_id, id);",
 ];
 
 const TIME_FMT: &str = "%H:%M";
@@ -125,6 +146,31 @@ fn reminder_row(r: &Row) -> rusqlite::Result<Reminder> {
         google_list_id: r.get(7)?,
         google_etag: r.get(8)?,
         updated_utc: r.get(9)?,
+    })
+}
+
+const MESSAGE_COLS: &str = "id, conversation_id, role, content, route, cloud, actions, created_utc";
+
+fn conversation_row(r: &Row) -> rusqlite::Result<Conversation> {
+    Ok(Conversation {
+        id: r.get(0)?,
+        title: r.get(1)?,
+        mode: r.get(2)?,
+        created_utc: r.get(3)?,
+        updated_utc: r.get(4)?,
+    })
+}
+
+fn message_row(r: &Row) -> rusqlite::Result<ChatMessage> {
+    Ok(ChatMessage {
+        id: r.get(0)?,
+        conversation_id: r.get(1)?,
+        role: r.get(2)?,
+        content: r.get(3)?,
+        route: r.get(4)?,
+        cloud: r.get(5)?,
+        actions: r.get(6)?,
+        created_utc: r.get(7)?,
     })
 }
 
@@ -506,6 +552,101 @@ impl Store {
         )?;
         Ok(())
     }
+
+    // -----------------------------------------------------------------------
+    // Assistant conversations
+
+    pub fn create_conversation(
+        &self,
+        title: &str,
+        mode: &str,
+        now: DateTime<Utc>,
+    ) -> Result<Conversation> {
+        self.conn.execute(
+            "INSERT INTO conversations (title, mode, created_utc, updated_utc) VALUES (?1, ?2, ?3, ?3)",
+            params![title, mode, now],
+        )?;
+        Ok(self
+            .conversation(self.conn.last_insert_rowid())?
+            .expect("just inserted"))
+    }
+
+    pub fn conversation(&self, id: i64) -> Result<Option<Conversation>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT id, title, mode, created_utc, updated_utc FROM conversations WHERE id = ?1",
+                [id],
+                conversation_row,
+            )
+            .optional()?)
+    }
+
+    /// Most recently active first.
+    pub fn conversations(&self) -> Result<Vec<Conversation>> {
+        let mut st = self.conn.prepare(
+            "SELECT id, title, mode, created_utc, updated_utc FROM conversations
+             ORDER BY updated_utc DESC, id DESC",
+        )?;
+        let rows = st
+            .query_map([], conversation_row)?
+            .collect::<rusqlite::Result<_>>()?;
+        Ok(rows)
+    }
+
+    pub fn set_conversation_mode(&self, id: i64, mode: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE conversations SET mode = ?2 WHERE id = ?1",
+            params![id, mode],
+        )?;
+        Ok(())
+    }
+
+    /// Deletes the conversation and its messages.
+    pub fn delete_conversation(&self, id: i64) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM conversations WHERE id = ?1", [id])?;
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_message(
+        &self,
+        conversation_id: i64,
+        role: &str,
+        content: &str,
+        route: &str,
+        cloud: bool,
+        actions: &str,
+        now: DateTime<Utc>,
+    ) -> Result<ChatMessage> {
+        self.conn.execute(
+            "INSERT INTO messages (conversation_id, role, content, route, cloud, actions, created_utc)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![conversation_id, role, content, route, cloud, actions, now],
+        )?;
+        let id = self.conn.last_insert_rowid();
+        self.conn.execute(
+            "UPDATE conversations SET updated_utc = ?2 WHERE id = ?1",
+            params![conversation_id, now],
+        )?;
+        Ok(self.conn.query_row(
+            &format!("SELECT {MESSAGE_COLS} FROM messages WHERE id = ?1"),
+            [id],
+            message_row,
+        )?)
+    }
+
+    /// Oldest first.
+    pub fn messages(&self, conversation_id: i64) -> Result<Vec<ChatMessage>> {
+        let mut st = self.conn.prepare(&format!(
+            "SELECT {MESSAGE_COLS} FROM messages WHERE conversation_id = ?1 ORDER BY id"
+        ))?;
+        let rows = st
+            .query_map([conversation_id], message_row)?
+            .collect::<rusqlite::Result<_>>()?;
+        Ok(rows)
+    }
 }
 
 #[cfg(test)]
@@ -661,5 +802,49 @@ mod tests {
         let gone = s.delete_reminder(tomorrow.id).unwrap().unwrap();
         s.restore_reminder(&gone).unwrap();
         assert_eq!(s.reminder(tomorrow.id).unwrap(), Some(gone));
+    }
+
+    #[test]
+    fn conversations_and_messages() {
+        let s = Store::open_in_memory().unwrap();
+        let a = s
+            .create_conversation("Weather", "local", utc(9, 0, 0))
+            .unwrap();
+        let b = s
+            .create_conversation("Alarms", "local", utc(9, 5, 0))
+            .unwrap();
+        assert_eq!(
+            s.conversations()
+                .unwrap()
+                .iter()
+                .map(|c| c.id)
+                .collect::<Vec<_>>(),
+            [b.id, a.id]
+        );
+
+        s.add_message(a.id, "user", "rain later?", "", false, "", utc(9, 10, 0))
+            .unwrap();
+        let reply = s
+            .add_message(
+                a.id,
+                "assistant",
+                "No rain today.",
+                "LOCAL · LLAMA3.2:3B",
+                false,
+                "",
+                utc(9, 10, 5),
+            )
+            .unwrap();
+        assert_eq!(reply.role, "assistant");
+        // A new message moves the conversation to the top.
+        assert_eq!(s.conversations().unwrap()[0].id, a.id);
+        assert_eq!(s.messages(a.id).unwrap().len(), 2);
+
+        s.set_conversation_mode(a.id, "cloud").unwrap();
+        assert_eq!(s.conversation(a.id).unwrap().unwrap().mode, "cloud");
+
+        s.delete_conversation(a.id).unwrap();
+        assert!(s.conversation(a.id).unwrap().is_none());
+        assert!(s.messages(a.id).unwrap().is_empty(), "messages cascade");
     }
 }

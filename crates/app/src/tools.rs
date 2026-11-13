@@ -144,27 +144,7 @@ pub fn run(
     now_local: NaiveDateTime,
 ) -> Outcome {
     let a = &call.args;
-    let apply = |cmd: Command| {
-        let say = confirm(&cmd, now_local);
-        match actions::apply(store, cmd, now_utc, now_local) {
-            Ok(applied) => {
-                let say = match &applied.undo {
-                    Some(Undo::RestoreTimers(ts)) => Some(match ts.as_slice() {
-                        [one] => format!("Cancelled the {} timer.", one.name),
-                        many => format!("Cancelled {} timers.", many.len()),
-                    }),
-                    None => Some(format!("{}.", sentence_case(&applied.summary))), // e.g. "No timer named rice"
-                    _ => say,
-                };
-                Outcome {
-                    result: format!("done: {}", applied.summary.to_lowercase()),
-                    applied: Some(applied),
-                    say,
-                }
-            }
-            Err(e) => Outcome::error(e.to_string()),
-        }
-    };
+    let apply = |cmd: Command| apply_command(store, cmd, now_utc, now_local);
 
     match call.name.as_str() {
         "set_timer" => {
@@ -241,6 +221,36 @@ pub fn run(
             "Weather isn't available: no location is set, or no forecast has loaded yet.".into()
         })),
         other => Outcome::error(format!("unknown tool {other}")),
+    }
+}
+
+/// Apply a clock command and word the confirmation. Used by the model's tools
+/// and by clock commands typed into an assistant conversation.
+pub fn apply_command(
+    store: &Store,
+    cmd: Command,
+    now_utc: DateTime<Utc>,
+    now_local: NaiveDateTime,
+) -> Outcome {
+    let say = confirm(&cmd, now_local);
+    match actions::apply(store, cmd, now_utc, now_local) {
+        Ok(applied) => {
+            let say = match &applied.undo {
+                Some(Undo::RestoreTimers(ts)) => Some(match ts.as_slice() {
+                    [one] => format!("Cancelled the {} timer.", one.name),
+                    many => format!("Cancelled {} timers.", many.len()),
+                }),
+                None if applied.brief => Some("The spoken briefing arrives in Phase 4.".into()),
+                None => Some(format!("{}.", sentence_case(&applied.summary))), // e.g. "No timer named rice"
+                _ => say,
+            };
+            Outcome {
+                result: format!("done: {}", applied.summary.to_lowercase()),
+                applied: Some(applied),
+                say,
+            }
+        }
+        Err(e) => Outcome::error(e.to_string()),
     }
 }
 

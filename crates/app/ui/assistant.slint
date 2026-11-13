@@ -1,0 +1,331 @@
+import { Theme } from "theme.slint";
+import { Label } from "widgets/label.slint";
+import { TextButton } from "widgets/controls.slint";
+import { Chat, ChatMsg, ConvRow, Dash } from "state.slint";
+
+component Hairline inherits Rectangle {
+    height: Theme.hairline;
+    background: Theme.line;
+}
+
+// LOCAL / CLOUD switch.
+component RouteSwitch inherits Rectangle {
+    width: 220px;
+    height: Theme.touch;
+    border-width: Theme.hairline;
+    border-color: Theme.line;
+    border-radius: Theme.radius;
+
+    HorizontalLayout {
+        padding: 3px;
+        spacing: 3px;
+        for opt[i] in ["LOCAL", "CLOUD"]: Rectangle {
+            property <bool> on: (i == 1) == Chat.cloud;
+            border-radius: 2px;
+            background: on ? Theme.accent-fill : (ta.has-hover ? Theme.panel : transparent);
+            Label {
+                text: opt;
+                color: on ? Theme.on-accent : Theme.text;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            ta := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Chat.set-cloud(i == 1); }
+            }
+        }
+    }
+}
+
+component ConvItem inherits Rectangle {
+    in property <ConvRow> item;
+    height: 64px;
+    background: item.id == Chat.current-id ? Theme.panel : (ta.has-hover ? Theme.panel.with-alpha(0.5) : transparent);
+    border-radius: Theme.radius;
+
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Chat.select(item.id); }
+    }
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 2px;
+        spacing: 8px;
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 5px;
+            Text {
+                text: item.title;
+                font-size: 16px;
+                color: Theme.text;
+                overflow: elide;
+            }
+            Label { text: item.when; }
+        }
+        VerticalLayout {
+            alignment: center;
+            TextButton {
+                text: "×";
+                clicked => { Chat.delete(item.id); }
+            }
+        }
+    }
+}
+
+component MsgItem inherits Rectangle {
+    in property <ChatMsg> item;
+    height: row.preferred-height;
+
+    row := HorizontalLayout {
+        padding-top: 16px;
+        padding-bottom: 16px;
+        spacing: 24px;
+
+        VerticalLayout {
+            width: 120px;
+            spacing: 6px;
+            Label {
+                text: item.role == "user" ? "YOU" : item.role == "notice" ? "NOTICE" : "ASSISTANT";
+                color: item.role == "user" ? Theme.text : Theme.muted;
+            }
+            Label { text: item.when; }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 8px;
+            if item.route != "": Label {
+                text: item.route;
+                color: item.cloud ? Theme.text : Theme.accent-text;
+            }
+            if item.actions != "": HorizontalLayout {
+                spacing: 16px;
+                Label {
+                    text: item.actions;
+                    color: Theme.text;
+                    wrap: word-wrap;
+                    horizontal-stretch: 1;
+                    vertical-alignment: center;
+                }
+                if item.can-undo: VerticalLayout {
+                    alignment: center;
+                    TextButton {
+                        text: "UNDO";
+                        clicked => { Chat.undo(); }
+                    }
+                }
+            }
+            Text {
+                text: item.text == "" && item.pending ? "…" : item.text;
+                font-family: Theme.sans;
+                font-size: 19px;
+                color: item.role == "notice" ? Theme.muted : Theme.text;
+                wrap: word-wrap;
+            }
+        }
+    }
+    Hairline { y: root.height - 1px; }
+}
+
+component ChatInput inherits Rectangle {
+    height: 60px;
+    background: Theme.panel;
+    border-width: Theme.hairline;
+    border-color: input.has-focus ? Theme.accent-fill : Theme.line;
+    border-radius: Theme.radius;
+
+    HorizontalLayout {
+        padding-left: 20px;
+        padding-right: 8px;
+        spacing: 16px;
+        Text {
+            text: "›";
+            font-family: Theme.mono;
+            font-size: 22px;
+            color: Theme.accent-text;
+            vertical-alignment: center;
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            input := TextInput {
+                width: parent.width;
+                height: parent.height;
+                text <=> Chat.input;
+                font-family: Theme.sans;
+                font-size: 19px;
+                color: Theme.text;
+                selection-background-color: Theme.accent-fill;
+                selection-foreground-color: Theme.on-accent;
+                vertical-alignment: center;
+                single-line: true;
+                accepted => { Chat.send(self.text); }
+                edited => { Dash.activity(); }
+            }
+            Text {
+                visible: input.text == "";
+                x: 0;
+                height: parent.height;
+                text: "ASK ABOUT YOUR DAY, OR TYPE A CLOCK COMMAND";
+                font-family: Theme.mono;
+                font-size: 16px;
+                color: Theme.muted;
+                vertical-alignment: center;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            if Chat.busy: TextButton {
+                text: "STOP";
+                clicked => { Chat.stop(); }
+            }
+            if !Chat.busy: TextButton {
+                text: "SEND";
+                primary: input.text != "";
+                clicked => { Chat.send(input.text); }
+            }
+        }
+    }
+}
+
+component PanelFact inherits Rectangle {
+    in property <string> key;
+    in property <string> value;
+    in property <color> value-color: Theme.text;
+    height: 52px;
+    HorizontalLayout {
+        Label { text: root.key; vertical-alignment: center; }
+        Rectangle { horizontal-stretch: 1; }
+        Label { text: root.value; color: root.value-color; vertical-alignment: center; }
+    }
+    Hairline { y: root.height - 1px; }
+}
+
+export component AssistantScreen inherits Rectangle {
+    background: Theme.bg;
+
+    HorizontalLayout {
+        // Conversations
+        VerticalLayout {
+            width: 380px;
+            padding: 24px;
+            padding-left: Theme.page-pad;
+            spacing: 12px;
+            HorizontalLayout {
+                height: Theme.touch;
+                Label { text: "CONVERSATIONS"; color: Theme.text; vertical-alignment: center; }
+                Rectangle { horizontal-stretch: 1; }
+                TextButton {
+                    text: "+ NEW";
+                    clicked => { Chat.new-conversation(); }
+                }
+            }
+            Hairline { }
+            cl := Flickable {
+                vertical-stretch: 1;
+                VerticalLayout {
+                    width: cl.width;
+                    alignment: start;
+                    spacing: 2px;
+                    for c in Chat.conversations: ConvItem { item: c; }
+                    if Chat.conversations.length == 0: Label {
+                        text: "NONE YET";
+                        height: 56px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+        Rectangle { width: Theme.hairline; background: Theme.line; }
+
+        // Transcript
+        VerticalLayout {
+            horizontal-stretch: 1;
+            padding: 24px;
+            padding-left: 40px;
+            padding-right: 40px;
+            spacing: 14px;
+
+            HorizontalLayout {
+                height: Theme.touch;
+                spacing: 20px;
+                Text {
+                    text: Chat.current-title;
+                    font-family: Theme.sans;
+                    font-size: 22px;
+                    font-weight: 500;
+                    color: Theme.text;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                    vertical-alignment: center;
+                }
+                RouteSwitch { }
+            }
+            Hairline { }
+            tf := Flickable {
+                vertical-stretch: 1;
+                // Keep the newest message in view as replies stream in.
+                changed content-height => {
+                    self.content-y = min(0px, self.height - self.content-height);
+                }
+                VerticalLayout {
+                    width: tf.width;
+                    alignment: start;
+                    for m in Chat.messages: MsgItem { item: m; }
+                    if Chat.messages.length == 0: VerticalLayout {
+                        padding-top: 48px;
+                        spacing: 14px;
+                        Text {
+                            text: "Ask about your day, the weather, or set timers, alarms and reminders.";
+                            font-size: 20px;
+                            color: Theme.text;
+                            wrap: word-wrap;
+                        }
+                        Label {
+                            text: Chat.cloud
+                                ? "THIS CONVERSATION IS SET TO CLOUD · MESSAGES WILL LEAVE THIS LAPTOP"
+                                : "LOCAL · ANSWERED ON THIS LAPTOP · CLOCK COMMANDS NEED NO AI";
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+            }
+            ChatInput { }
+        }
+        Rectangle { width: Theme.hairline; background: Theme.line; }
+
+        // Privacy
+        VerticalLayout {
+            width: 360px;
+            padding: 24px;
+            padding-right: Theme.page-pad;
+            spacing: 0;
+            HorizontalLayout {
+                height: Theme.touch;
+                Label { text: "PRIVACY"; color: Theme.text; vertical-alignment: center; }
+            }
+            Rectangle { height: 12px; }
+            Hairline { }
+            PanelFact {
+                key: "THIS CONVERSATION";
+                value: Chat.cloud ? "CLOUD" : "LOCAL";
+                value-color: Chat.cloud ? Theme.text : Theme.accent-text;
+            }
+            PanelFact { key: "LOCAL MODEL"; value: Chat.local-model; }
+            PanelFact { key: "ADDRESS"; value: Chat.local-address; }
+            PanelFact {
+                key: "STATUS";
+                value: Chat.local-status;
+                value-color: Chat.local-status == "READY" ? Theme.accent-text : Theme.text;
+            }
+            PanelFact { key: "CLOUD"; value: Chat.cloud-status; }
+            Rectangle { height: 20px; }
+            Text {
+                text: "Every conversation starts on LOCAL and is answered by the model on this laptop. Nothing leaves the laptop unless you switch a conversation to CLOUD, and cloud replies are labelled. Clock commands are handled without any AI.";
+                font-size: 15px;
+                color: Theme.muted;
+                wrap: word-wrap;
+            }
+            Rectangle { vertical-stretch: 1; }
+        }
+    }
+}
