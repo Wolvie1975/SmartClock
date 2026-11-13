@@ -527,7 +527,7 @@ X-GNOME-Autostart-enabled=true
 **Done when:** everything on the dashboard works offline with no AI and no Google.
 
 ### Phase 3: Assistant
-- [ ] `ai` crate: trait, OpenAI-compatible adapter (Ollama first, via its `/v1` endpoint), then Anthropic (raw HTTP; there is no official Rust SDK), then Gemini
+- [ ] `ai` crate: trait, OpenAI-compatible adapter (Ollama first, via its `/v1` endpoint) ✓, then Anthropic (raw HTTP; there is no official Rust SDK), then Gemini
 - [ ] Tool calls wired to the `clock-core` actions, with UNDO
 - [ ] Assistant screen: conversations, transcript with route labels and cloud tag, routing switch
 - [ ] Settings → AI & Models: local model (Ollama URL + model), cloud provider + model (key in the keyring)
