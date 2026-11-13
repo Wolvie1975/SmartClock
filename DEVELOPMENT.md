@@ -7,7 +7,7 @@ A full-screen desktop clock and dashboard for a Fedora 45 laptop, written in **R
 | Design canvas (all screens, dark + light, clickable) | https://claude.ai/artifact/LBAE37B37bFNrFxicYzqxG |
 | Design handoff doc (decisions, tokens, behavior) | https://claude.ai/artifact/1D8z1npXjRiowFfg6vKsbt |
 
-> **Setting up a machine?** See [INSTALL.md](INSTALL.md).
+> **Setting up a machine?** See [INSTALL.md](INSTALL.md). **Picking up the work?** Start with [HANDOFF.md](HANDOFF.md).
 >
 > **How to use this file:** work through the phases in section 14 in order. Each phase ends with something you can run. Section numbers are referenced from the checklists.
 
