@@ -1,0 +1,96 @@
+import { Theme } from "../theme.slint";
+import { Label } from "label.slint";
+import { NewsItem } from "../state.slint";
+
+component StoryCard inherits Rectangle {
+    in property <NewsItem> item;
+    callback open();
+
+    height: 112px;
+
+    VerticalLayout {
+        spacing: 8px;
+        HorizontalLayout {
+            height: 24px;
+            Label {
+                text: root.item.source;
+                color: Theme.accent-text;
+                overflow: elide;
+                vertical-alignment: center;
+            }
+            Rectangle { horizontal-stretch: 1; }
+            Label {
+                text: root.item.age;
+                vertical-alignment: center;
+            }
+        }
+        Text {
+            text: root.item.title;
+            font-family: Theme.sans;
+            font-size: 21px;
+            color: ta.has-hover ? Theme.accent-text : Theme.text;
+            wrap: word-wrap;
+            overflow: elide;
+            vertical-stretch: 1;
+            vertical-alignment: top;
+        }
+    }
+
+    Rectangle {
+        y: root.height - Theme.hairline;
+        height: Theme.hairline;
+        background: Theme.line;
+    }
+
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        accessible-role: button;
+        accessible-label: root.item.title;
+        accessible-action-default => { root.open(); }
+        clicked => { root.open(); }
+    }
+}
+
+export component NewsColumn inherits VerticalLayout {
+    in property <[NewsItem]> items;
+    in property <string> footer;
+    in property <bool> offline;
+    callback open-story(string);
+
+    padding-left: 24px;
+    padding-right: 24px;
+    spacing: 0;
+
+    HorizontalLayout {
+        height: Theme.touch;
+        spacing: 12px;
+        Label { text: "NEWS"; color: Theme.text; vertical-alignment: center; }
+        Rectangle { horizontal-stretch: 1; }
+        Label {
+            text: root.offline ? "OFFLINE" : "TOP 3";
+            color: root.offline ? Theme.muted : Theme.accent-text;
+            vertical-alignment: center;
+        }
+    }
+    Rectangle { height: 12px; }
+    Rectangle { height: Theme.hairline; background: Theme.line; }
+
+    if root.items.length == 0: Label {
+        text: root.offline ? "NO STORIES CACHED" : "LOADING STORIES…";
+        height: 96px;
+        vertical-alignment: center;
+    }
+    for item in root.items: StoryCard {
+        item: item;
+        open => { root.open-story(item.url); }
+    }
+
+    Rectangle { vertical-stretch: 1; }
+    Label {
+        text: root.footer;
+        color: root.offline ? Theme.muted : Theme.accent-text;
+        vertical-alignment: center;
+        height: Theme.touch;
+        overflow: elide;
+    }
+}

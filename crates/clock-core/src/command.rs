@@ -35,7 +35,6 @@ pub enum Command {
     CancelTimer {
         target: TimerTarget,
     },
-    Brief,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,9 +65,6 @@ pub fn parse(input: &str, now: NaiveDateTime) -> Option<Command> {
     let (orig, lower) = tokenize(input);
     if lower.is_empty() {
         return None;
-    }
-    if is_brief(&lower) {
-        return Some(Command::Brief);
     }
     if starts_with(&lower, &["remind", "me"]) {
         return parse_reminder(&orig, &lower, now);
@@ -125,22 +121,6 @@ fn join(orig: &[&str], idx: impl IntoIterator<Item = usize>) -> String {
         .map(|k| orig[k])
         .collect::<Vec<_>>()
         .join(" ")
-}
-
-// ---------------------------------------------------------------------------
-// Brief
-
-fn is_brief(lower: &[String]) -> bool {
-    const PHRASES: &[&str] = &[
-        "brief me",
-        "briefing",
-        "daily briefing",
-        "play briefing",
-        "play the briefing",
-        "play my briefing",
-        "give me my briefing",
-    ];
-    PHRASES.contains(&lower.join(" ").as_str())
 }
 
 // ---------------------------------------------------------------------------
@@ -932,13 +912,13 @@ mod tests {
         assert_eq!(p("stop"), None);
     }
 
-    // --- brief / other ---
+    // --- other ---
 
     #[test]
-    fn brief() {
-        assert_eq!(p("brief me"), Some(Command::Brief));
-        assert_eq!(p("Brief me."), Some(Command::Brief));
-        assert_eq!(p("play briefing"), Some(Command::Brief));
+    fn retired_briefing_phrases_are_not_clock_commands() {
+        assert_eq!(p("brief me"), None);
+        assert_eq!(p("Brief me."), None);
+        assert_eq!(p("play briefing"), None);
     }
 
     #[test]

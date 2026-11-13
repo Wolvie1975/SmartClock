@@ -249,7 +249,6 @@ pub fn apply_command(
                     [one] => format!("Cancelled the {} timer.", one.name),
                     many => format!("Cancelled {} timers.", many.len()),
                 }),
-                None if applied.brief => Some("The spoken briefing arrives in Phase 4.".into()),
                 None => Some(format!("{}.", sentence_case(&applied.summary))), // e.g. "No timer named rice"
                 _ => say,
             };
@@ -338,7 +337,7 @@ fn confirm(cmd: &Command, now_local: NaiveDateTime) -> Option<String> {
             };
             format!("Reminder added: {text}{when}.")
         }
-        Command::CancelTimer { .. } | Command::Brief => return None,
+        Command::CancelTimer { .. } => return None,
     })
 }
 
@@ -353,7 +352,7 @@ fn capitalize(s: &str) -> String {
         .unwrap_or_default()
 }
 
-/// Facts about today, as plain text. Also the input for the briefing (Phase 4).
+/// Facts about today, as plain text for the assistant's `list_today` tool.
 pub fn today_facts(
     store: &Store,
     weather: Option<String>,

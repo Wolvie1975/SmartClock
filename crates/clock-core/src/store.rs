@@ -5,8 +5,8 @@
 //! UTC instants use rusqlite's chrono encoding.
 
 use crate::model::{
-    local_to_utc, next_fire_local, Alarm, ChatMessage, Conversation, GoogleTaskUpdate, Reminder,
-    Source, Timer,
+    local_to_utc, next_fire_local, Alarm, CachedNewsStory, ChatMessage, Conversation,
+    GoogleTaskUpdate, Reminder, Source, Timer,
 };
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use rusqlite::{params, types::Type, Connection, OptionalExtension, Row};
@@ -80,6 +80,15 @@ const MIGRATIONS: &[&str] = &[
         task_id     TEXT PRIMARY KEY,
         list_id     TEXT NOT NULL,
         deleted_utc TEXT NOT NULL
+     );",
+    // 5: keep the latest successfully fetched news stories for offline display.
+    "CREATE TABLE news_cache (
+        position      INTEGER PRIMARY KEY CHECK(position BETWEEN 0 AND 2),
+        title         TEXT NOT NULL,
+        source        TEXT NOT NULL,
+        url           TEXT NOT NULL,
+        published_utc TEXT,
+        fetched_utc   TEXT NOT NULL
      );",
 ];
 
@@ -674,6 +683,47 @@ impl Store {
         Ok(())
     }
 
+    pub fn news_cache(&self) -> Result<Vec<CachedNewsStory>> {
+        let mut st = self.conn.prepare(
+            "SELECT title, source, url, published_utc, fetched_utc
+             FROM news_cache ORDER BY position",
+        )?;
+        let rows = st
+            .query_map([], |row| {
+                Ok(CachedNewsStory {
+                    title: row.get(0)?,
+                    source: row.get(1)?,
+                    url: row.get(2)?,
+                    published_utc: row.get(3)?,
+                    fetched_utc: row.get(4)?,
+                })
+            })?
+            .collect::<rusqlite::Result<_>>()?;
+        Ok(rows)
+    }
+
+    pub fn save_news_cache(&self, stories: &[CachedNewsStory]) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute("DELETE FROM news_cache", [])?;
+        for (position, story) in stories.iter().take(3).enumerate() {
+            tx.execute(
+                "INSERT INTO news_cache
+                 (position, title, source, url, published_utc, fetched_utc)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![
+                    position as i64,
+                    story.title,
+                    story.source,
+                    story.url,
+                    story.published_utc,
+                    story.fetched_utc
+                ],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
     pub fn restore_reminder(&self, r: &Reminder) -> Result<()> {
         self.conn.execute(
             &format!(
@@ -976,6 +1026,31 @@ mod tests {
         s.delete_reminder(task.id).unwrap();
         s.clear_google_task_tombstone("remote-task").unwrap();
         assert!(s.google_task_tombstones().unwrap().is_empty());
+    }
+
+    #[test]
+    fn news_cache_replaces_stories_in_order_and_keeps_three() {
+        let s = Store::open_in_memory().unwrap();
+        let fetched = utc(12, 0, 0);
+        let stories = (0..4)
+            .map(|index| CachedNewsStory {
+                title: format!("Story {index}"),
+                source: "Example".into(),
+                url: format!("https://example.test/{index}"),
+                published_utc: Some(utc(11, index as u32, 0)),
+                fetched_utc: fetched,
+            })
+            .collect::<Vec<_>>();
+
+        s.save_news_cache(&stories).unwrap();
+        let cached = s.news_cache().unwrap();
+        assert_eq!(cached.len(), 3);
+        assert_eq!(cached[0].title, "Story 0");
+        assert_eq!(cached[2].title, "Story 2");
+        assert_eq!(cached[0].fetched_utc, fetched);
+
+        s.save_news_cache(&stories[1..2]).unwrap();
+        assert_eq!(s.news_cache().unwrap(), stories[1..2]);
     }
 
     #[test]

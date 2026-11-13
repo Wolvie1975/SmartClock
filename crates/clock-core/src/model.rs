@@ -228,6 +228,15 @@ pub struct ChatMessage {
     pub created_utc: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CachedNewsStory {
+    pub title: String,
+    pub source: String,
+    pub url: String,
+    pub published_utc: Option<DateTime<Utc>>,
+    pub fetched_utc: DateTime<Utc>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

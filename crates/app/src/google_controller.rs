@@ -6,10 +6,7 @@ use clock_core::{
     model::{GoogleTaskUpdate, Reminder},
     Store,
 };
-use google::{
-    oauth, CalendarEvent, EventStart, GoogleApi, MailUnread, Task, TaskWrite, GMAIL_METADATA_SCOPE,
-    TASKS_SCOPE,
-};
+use google::{oauth, CalendarEvent, EventStart, GoogleApi, Task, TaskWrite, TASKS_SCOPE};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::{
     cell::{Cell, RefCell},
@@ -27,16 +24,14 @@ use zbus::{Connection, Proxy};
 const REFRESH_INTERVAL: Duration = Duration::from_secs(5 * 60);
 const CLIENT_ID_SETTING: &str = "google_client_id";
 const TASKS_SETTING: &str = "google_tasks_enabled";
-const MAIL_SETTING: &str = "google_mail_enabled";
 const TASK_LIST_SETTING: &str = "google_task_list_id";
-const MAIL_HISTORY_SETTING: &str = "google_mail_history_id";
 const RECONNECT_SETTING: &str = "google_reconnect_required";
 
 enum Event {
     Authorization(Result<(), String>),
     Disconnected(Result<(), String>),
     Calendar(Result<Vec<CalendarEvent>, String>),
-    Synced(SyncResult),
+    Synced(Result<TaskSync, String>),
 }
 
 struct LocalTask {
@@ -61,11 +56,6 @@ struct TaskSync {
     cleared_tombstones: Vec<String>,
 }
 
-struct SyncResult {
-    tasks: Option<Result<TaskSync, String>>,
-    mail: Option<Result<MailUnread, String>>,
-}
-
 pub struct GoogleController {
     store: Rc<Store>,
     runtime: Runtime,
@@ -74,7 +64,6 @@ pub struct GoogleController {
     job: RefCell<Option<JoinHandle<()>>>,
     connected: Cell<bool>,
     tasks_enabled: Cell<bool>,
-    mail_enabled: Cell<bool>,
     busy: Cell<bool>,
     calendar_enabled: Cell<bool>,
     next_sync: Cell<Instant>,
@@ -92,7 +81,8 @@ impl GoogleController {
             .context("building Google runtime")?;
         let (tx, rx) = mpsc::channel();
         let tasks_enabled = store.setting_or(TASKS_SETTING, true)?;
-        let mail_enabled = store.setting_or(MAIL_SETTING, true)?;
+        store.delete_setting("google_mail_enabled")?;
+        store.delete_setting("google_mail_history_id")?;
         let calendar_enabled = store.setting_or("google_calendar_enabled", false)?;
         let reconnect_required = store.setting_or(RECONNECT_SETTING, false)?;
         let client_id = store.get_setting(CLIENT_ID_SETTING)?.unwrap_or_default();
@@ -104,7 +94,6 @@ impl GoogleController {
             job: RefCell::new(None),
             connected: Cell::new(false),
             tasks_enabled: Cell::new(tasks_enabled),
-            mail_enabled: Cell::new(mail_enabled),
             busy: Cell::new(false),
             calendar_enabled: Cell::new(calendar_enabled),
             next_sync: Cell::new(Instant::now()),
@@ -114,7 +103,6 @@ impl GoogleController {
 
         ui.set_google_client_id(client_id.into());
         ui.set_google_tasks(tasks_enabled);
-        ui.set_google_mail(mail_enabled);
         ui.set_google_calendar_status(
             if calendar_enabled {
                 "CHECKING…"
@@ -135,7 +123,6 @@ impl GoogleController {
                 }
                 .into(),
             );
-            global.set_new_mail("NOT CONNECTED".into());
         }
 
         if calendar_enabled {
@@ -162,9 +149,9 @@ impl GoogleController {
 
         let weak = ui.as_weak();
         let controller = this.clone();
-        ui.on_connect_google(move |client_id, tasks, mail| {
+        ui.on_connect_google(move |client_id, tasks| {
             if let Some(ui) = weak.upgrade() {
-                controller.connect(&ui, &client_id, tasks, mail);
+                controller.connect(&ui, &client_id, tasks);
             }
         });
         let weak = ui.as_weak();
@@ -184,17 +171,17 @@ impl GoogleController {
         Ok(this)
     }
 
-    fn connect(&self, ui: &AppWindow, client_id: &str, tasks: bool, mail: bool) {
+    fn connect(&self, ui: &AppWindow, client_id: &str, tasks: bool) {
         let client_id = client_id.trim().to_owned();
         if client_id.is_empty() {
             ui.set_google_status("CLIENT ID REQUIRED".into());
             return;
         }
-        if !tasks && !mail {
-            ui.set_google_status("SELECT A SERVICE".into());
+        if !tasks {
+            ui.set_google_status("SELECT TASKS".into());
             return;
         }
-        if let Err(error) = self.save_preferences(&client_id, tasks, mail) {
+        if let Err(error) = self.save_preferences(&client_id, tasks) {
             tracing::error!("saving Google settings failed: {error:#}");
             ui.set_google_status("SETTINGS ERROR".into());
             return;
@@ -210,11 +197,10 @@ impl GoogleController {
         self.busy.set(true);
         ui.set_google_busy(true);
         ui.set_google_status("OPENING GOOGLE…".into());
-        let scopes = scopes(tasks, mail);
         let tx = self.tx.clone();
         let handle = self.runtime.spawn(async move {
             let result = async {
-                let tokens = oauth::authorize_loopback(&client_id, None, &scopes).await?;
+                let tokens = oauth::authorize_loopback(&client_id, None, &[TASKS_SCOPE]).await?;
                 let refresh_token = tokens.refresh_token.context(
                     "Google did not return a refresh token; revoke access and reconnect",
                 )?;
@@ -228,15 +214,13 @@ impl GoogleController {
         *self.job.borrow_mut() = Some(handle);
     }
 
-    pub fn save_preferences(&self, client_id: &str, tasks: bool, mail: bool) -> Result<bool> {
+    pub fn save_preferences(&self, client_id: &str, tasks: bool) -> Result<bool> {
         let previous_client_id = self
             .store
             .get_setting(CLIENT_ID_SETTING)?
             .unwrap_or_default();
         let previous_tasks = self.store.setting_or(TASKS_SETTING, true)?;
-        let previous_mail = self.store.setting_or(MAIL_SETTING, true)?;
-        let changed =
-            previous_client_id != client_id || previous_tasks != tasks || previous_mail != mail;
+        let changed = previous_client_id != client_id || previous_tasks != tasks;
         let reconnect_required = self.connected.get() && changed;
         if reconnect_required {
             self.store.set_setting(RECONNECT_SETTING, "true")?;
@@ -246,10 +230,7 @@ impl GoogleController {
         self.store.set_setting(CLIENT_ID_SETTING, client_id)?;
         self.store
             .set_setting(TASKS_SETTING, if tasks { "true" } else { "false" })?;
-        self.store
-            .set_setting(MAIL_SETTING, if mail { "true" } else { "false" })?;
         self.tasks_enabled.set(tasks);
-        self.mail_enabled.set(mail);
         Ok(reconnect_required)
     }
 
@@ -345,7 +326,6 @@ impl GoogleController {
                             ui.set_google_status("NOT CONNECTED".into());
                             ui.global::<Google>()
                                 .set_tasks_status("NOT CONNECTED".into());
-                            ui.global::<Google>().set_new_mail("NOT CONNECTED".into());
                         }
                         Err(error) => {
                             tracing::error!("Google disconnect failed: {error}");
@@ -406,8 +386,7 @@ impl GoogleController {
             return;
         }
         let tasks = self.tasks_enabled.get();
-        let mail = self.mail_enabled.get();
-        if !tasks && !mail {
+        if !tasks {
             self.busy.set(false);
             self.next_sync.set(Instant::now() + REFRESH_INTERVAL);
             return;
@@ -435,57 +414,33 @@ impl GoogleController {
                 return;
             }
         };
-        let history_id = match self.store.get_setting(MAIL_HISTORY_SETTING) {
-            Ok(value) => value,
+        let local = match self.store.reminders() {
+            Ok(reminders) => reminders
+                .into_iter()
+                .filter(|reminder| reminder.due_time.is_none())
+                .map(local_task)
+                .collect(),
             Err(error) => {
-                tracing::error!("reading Gmail history ID failed: {error}");
+                tracing::error!("reading reminders for Google sync failed: {error}");
                 self.busy.set(false);
                 self.next_sync.set(Instant::now() + REFRESH_INTERVAL);
                 return;
             }
         };
-        let local = if tasks {
-            match self.store.reminders() {
-                Ok(reminders) => reminders
-                    .into_iter()
-                    .filter(|reminder| reminder.due_time.is_none())
-                    .map(local_task)
-                    .collect(),
-                Err(error) => {
-                    tracing::error!("reading reminders for Google sync failed: {error}");
-                    self.busy.set(false);
-                    self.next_sync.set(Instant::now() + REFRESH_INTERVAL);
-                    return;
-                }
+        let tombstones = match self.store.google_task_tombstones() {
+            Ok(value) => value,
+            Err(error) => {
+                tracing::error!("reading Google task deletions failed: {error}");
+                self.busy.set(false);
+                self.next_sync.set(Instant::now() + REFRESH_INTERVAL);
+                return;
             }
-        } else {
-            Vec::new()
-        };
-        let tombstones = if tasks {
-            match self.store.google_task_tombstones() {
-                Ok(value) => value,
-                Err(error) => {
-                    tracing::error!("reading Google task deletions failed: {error}");
-                    self.busy.set(false);
-                    self.next_sync.set(Instant::now() + REFRESH_INTERVAL);
-                    return;
-                }
-            }
-        } else {
-            Vec::new()
         };
         let tx = self.tx.clone();
         let handle = self.runtime.spawn(async move {
-            let result = sync_google(
-                &client_id,
-                tasks,
-                mail,
-                preferred_list,
-                history_id,
-                local,
-                tombstones,
-            )
-            .await;
+            let result = sync_google(&client_id, preferred_list, local, tombstones)
+                .await
+                .map_err(|error| format!("{error:#}"));
             let _ = tx.send(Event::Synced(result));
         });
         *self.job.borrow_mut() = Some(handle);
@@ -495,70 +450,45 @@ impl GoogleController {
         &self,
         ui: &AppWindow,
         dash: &crate::dashboard::DashController,
-        result: SyncResult,
+        result: Result<TaskSync, String>,
     ) {
-        if let Some(tasks) = result.tasks {
-            match tasks {
-                Ok(sync) => {
-                    if let Err(error) = self.store.set_setting(TASK_LIST_SETTING, &sync.list_id) {
-                        tracing::error!("saving Google task list failed: {error}");
-                    }
-                    let mut apply_failed = false;
-                    for local_id in sync.deleted_local_ids {
-                        if let Err(error) = self.store.delete_google_reminder(local_id) {
-                            tracing::error!("removing deleted Google reminder failed: {error}");
-                            apply_failed = true;
-                        }
-                    }
-                    for change in sync.changes {
-                        if let Err(error) = self.apply_task(change, &sync.list_id) {
-                            tracing::error!("applying Google task failed: {error:#}");
-                            apply_failed = true;
-                        }
-                    }
-                    for task_id in sync.cleared_tombstones {
-                        if let Err(error) = self.store.clear_google_task_tombstone(&task_id) {
-                            tracing::error!("clearing Google task deletion failed: {error}");
-                            apply_failed = true;
-                        }
-                    }
-                    let status = if apply_failed {
-                        "SYNC NEEDS ATTENTION"
-                    } else {
-                        "SYNCED"
-                    };
-                    ui.global::<Google>().set_tasks_status(status.into());
-                    ui.set_google_status(status.into());
-                    dash.refresh(ui);
+        match result {
+            Ok(sync) => {
+                if let Err(error) = self.store.set_setting(TASK_LIST_SETTING, &sync.list_id) {
+                    tracing::error!("saving Google task list failed: {error}");
                 }
-                Err(error) => {
-                    tracing::warn!("Google Tasks sync failed: {error}");
-                    ui.global::<Google>().set_tasks_status("SYNC ERROR".into());
-                    ui.set_google_status("SYNC ERROR".into());
+                let mut apply_failed = false;
+                for local_id in sync.deleted_local_ids {
+                    if let Err(error) = self.store.delete_google_reminder(local_id) {
+                        tracing::error!("removing deleted Google reminder failed: {error}");
+                        apply_failed = true;
+                    }
                 }
+                for change in sync.changes {
+                    if let Err(error) = self.apply_task(change, &sync.list_id) {
+                        tracing::error!("applying Google task failed: {error:#}");
+                        apply_failed = true;
+                    }
+                }
+                for task_id in sync.cleared_tombstones {
+                    if let Err(error) = self.store.clear_google_task_tombstone(&task_id) {
+                        tracing::error!("clearing Google task deletion failed: {error}");
+                        apply_failed = true;
+                    }
+                }
+                let status = if apply_failed {
+                    "SYNC NEEDS ATTENTION"
+                } else {
+                    "SYNCED"
+                };
+                ui.global::<Google>().set_tasks_status(status.into());
+                ui.set_google_status(status.into());
+                dash.refresh(ui);
             }
-        }
-        if let Some(mail) = result.mail {
-            match mail {
-                Ok(mail) => {
-                    if let Err(error) = self
-                        .store
-                        .set_setting(MAIL_HISTORY_SETTING, &mail.history_id)
-                    {
-                        tracing::error!("saving Gmail history ID failed: {error}");
-                    }
-                    let label = if mail.used_inbox_fallback {
-                        format!("{} UNREAD", mail.count)
-                    } else {
-                        format!("{} NEW", mail.count)
-                    };
-                    ui.global::<Google>().set_new_mail(label.into());
-                }
-                Err(error) => {
-                    tracing::warn!("Gmail unread-count fetch failed: {error}");
-                    ui.global::<Google>()
-                        .set_new_mail("MAIL UNAVAILABLE".into());
-                }
+            Err(error) => {
+                tracing::warn!("Google Tasks sync failed: {error}");
+                ui.global::<Google>().set_tasks_status("SYNC ERROR".into());
+                ui.set_google_status("SYNC ERROR".into());
             }
         }
     }
@@ -606,17 +536,6 @@ impl GoogleController {
     }
 }
 
-fn scopes(tasks: bool, mail: bool) -> Vec<&'static str> {
-    let mut scopes = Vec::new();
-    if tasks {
-        scopes.push(TASKS_SCOPE);
-    }
-    if mail {
-        scopes.push(GMAIL_METADATA_SCOPE);
-    }
-    scopes
-}
-
 fn local_task(reminder: Reminder) -> LocalTask {
     LocalTask {
         id: reminder.id,
@@ -631,13 +550,10 @@ fn local_task(reminder: Reminder) -> LocalTask {
 
 async fn sync_google(
     client_id: &str,
-    tasks_enabled: bool,
-    mail_enabled: bool,
     preferred_list: Option<String>,
-    history_id: Option<String>,
     local: Vec<LocalTask>,
     tombstones: Vec<(String, String)>,
-) -> SyncResult {
+) -> Result<TaskSync> {
     let token = async {
         let refresh_token = secrets::get("google-refresh-token")
             .await?
@@ -649,46 +565,9 @@ async fn sync_google(
         Ok::<_, anyhow::Error>(tokens.access_token)
     }
     .await;
-    let access_token = match token {
-        Ok(token) => token,
-        Err(error) => {
-            let error = format!("{error:#}");
-            return SyncResult {
-                tasks: tasks_enabled.then_some(Err(error.clone())),
-                mail: mail_enabled.then_some(Err(error)),
-            };
-        }
-    };
-    let api = match GoogleApi::new(&access_token) {
-        Ok(api) => api,
-        Err(error) => {
-            let error = format!("{error:#}");
-            return SyncResult {
-                tasks: tasks_enabled.then_some(Err(error.clone())),
-                mail: mail_enabled.then_some(Err(error)),
-            };
-        }
-    };
-
-    let tasks = if tasks_enabled {
-        Some(
-            sync_tasks(&api, preferred_list.as_deref(), local, tombstones)
-                .await
-                .map_err(|error| format!("{error:#}")),
-        )
-    } else {
-        None
-    };
-    let mail = if mail_enabled {
-        Some(
-            api.unread_mail(history_id.as_deref())
-                .await
-                .map_err(|error| format!("{error:#}")),
-        )
-    } else {
-        None
-    };
-    SyncResult { tasks, mail }
+    let access_token = token?;
+    let api = GoogleApi::new(&access_token)?;
+    sync_tasks(&api, preferred_list.as_deref(), local, tombstones).await
 }
 
 async fn sync_tasks(

@@ -11,6 +11,7 @@ mod assistant;
 mod dashboard;
 mod google_controller;
 mod inhibit;
+mod news_task;
 mod ringing;
 mod secrets;
 mod sound;
@@ -104,6 +105,7 @@ fn main() -> anyhow::Result<()> {
         move || a()
     });
     let google = google_controller::GoogleController::install(&ui, store.clone())?;
+    let news = news_task::NewsController::install(&ui, store.clone())?;
     dash.set_google_sync_hook({
         let google = google.clone();
         move || google.request_sync()
@@ -174,8 +176,7 @@ fn main() -> anyhow::Result<()> {
               cloud_model: slint::SharedString,
               api_key: slint::SharedString,
               google_client_id: slint::SharedString,
-              google_tasks: bool,
-              google_mail: bool| {
+              google_tasks: bool| {
             let local_url = local_url.as_str().trim();
             let local_model = local_model.as_str().trim();
             let cloud_provider = cloud_provider.as_str().trim().to_uppercase();
@@ -212,15 +213,14 @@ fn main() -> anyhow::Result<()> {
             if !key_saved {
                 save_succeeded = false;
             }
-            let reconnect_required =
-                match google.save_preferences(google_client_id, google_tasks, google_mail) {
-                    Ok(reconnect_required) => reconnect_required,
-                    Err(e) => {
-                        tracing::warn!("saving Google settings failed: {e:#}");
-                        save_succeeded = false;
-                        false
-                    }
-                };
+            let reconnect_required = match google.save_preferences(google_client_id, google_tasks) {
+                Ok(reconnect_required) => reconnect_required,
+                Err(e) => {
+                    tracing::warn!("saving Google settings failed: {e:#}");
+                    save_succeeded = false;
+                    false
+                }
+            };
             if let Some(ui) = weak.upgrade() {
                 let chat = ui.global::<Chat>();
                 chat.set_local_model(local_model.into());
@@ -239,7 +239,6 @@ fn main() -> anyhow::Result<()> {
                 ui.set_ai_api_key(api_key.into());
                 ui.set_google_client_id(google_client_id.into());
                 ui.set_google_tasks(google_tasks);
-                ui.set_google_mail(google_mail);
                 ui.set_settings_save_status(
                     if save_succeeded {
                         "SAVED"
@@ -301,6 +300,7 @@ fn main() -> anyhow::Result<()> {
             ui.set_day_progress(now.num_seconds_from_midnight() as f32 / 86_400.0);
             dash.tick(&ui);
             google.tick(&ui, &dash);
+            news.tick(&ui);
             ringer.tick(&ui);
             weather.tick(&ui);
             assistant.tick(&ui);

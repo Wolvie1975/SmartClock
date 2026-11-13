@@ -14,12 +14,11 @@ export component SettingsScreen inherits Rectangle {
     in-out property <string> google-status: "NOT CONNECTED";
     in-out property <string> google-calendar-status: "NOT CONNECTED";
     in-out property <bool> google-tasks: true;
-    in-out property <bool> google-mail: true;
     in-out property <bool> google-busy: false;
     in-out property <string> save-status: "";
 
-    callback save(string, string, string, string, string, string, bool, bool);
-    callback connect-google(string, bool, bool);
+    callback save(string, string, string, string, string, string, bool);
+    callback connect-google(string, bool);
     callback connect-calendar();
     callback disconnect-google();
 
@@ -247,12 +246,12 @@ export component SettingsScreen inherits Rectangle {
                     color: Theme.muted;
                 }
                 Label {
-                    text: "Calendar connects through GNOME Online Accounts. Tasks and Gmail need a separate OAuth Desktop app client ID.";
+                    text: "Calendar connects through GNOME Online Accounts. Tasks needs a separate OAuth Desktop app client ID.";
                     color: Theme.muted;
                     wrap: word-wrap;
                 }
                 Label {
-                    text: "Create it in Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID → Desktop app. Enable Tasks/Gmail APIs and add your account as a test user.";
+                    text: "Create it in Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID → Desktop app. Enable the Tasks API and add your account as a test user.";
                     color: Theme.muted;
                     wrap: word-wrap;
                 }
@@ -294,30 +293,19 @@ export component SettingsScreen inherits Rectangle {
                     Label { text: "SYNC UNTIMED REMINDERS WITH TASKS"; color: Theme.text; vertical-alignment: center; }
                 }
                 HorizontalLayout {
-                    spacing: 8px;
-                    Check {
-                        checked: root.google-mail;
-                        toggled => {
-                            root.google-mail = !root.google-mail;
-                            root.save-status = "UNSAVED CHANGES";
-                        }
-                    }
-                    Label { text: "COUNT NEW UNREAD MAIL IN BRIEFING"; color: Theme.text; vertical-alignment: center; }
-                }
-                HorizontalLayout {
                     spacing: 16px;
                     Label {
-                        text: "TASKS / GMAIL · " + root.google-status;
+                        text: "TASKS · " + root.google-status;
                         color: Theme.accent-text;
                         vertical-alignment: center;
                     }
                     Rectangle { horizontal-stretch: 1; }
                     TextButton {
-                        text: root.google-busy ? "CONNECTING…" : "CONNECT TASKS / GMAIL";
+                        text: root.google-busy ? "CONNECTING…" : "CONNECT TASKS";
                         primary: true;
-                        enabled: !root.google-busy && (root.google-tasks || root.google-mail);
+                        enabled: !root.google-busy && root.google-tasks;
                         clicked => {
-                            root.connect-google(root.google-client-id, root.google-tasks, root.google-mail);
+                            root.connect-google(root.google-client-id, root.google-tasks);
                         }
                     }
                     TextButton {
@@ -374,8 +362,7 @@ export component SettingsScreen inherits Rectangle {
                             root.cloud-model,
                             root.api-key,
                             root.google-client-id,
-                            root.google-tasks,
-                            root.google-mail
+                            root.google-tasks
                         );
                     }
                 }

@@ -151,16 +151,6 @@ impl Ringer {
                 _ => {}
             }
         });
-        handler!(on_play_briefing, |r, ui| {
-            if let Some(Active {
-                phase: Phase::Dismissed { note, .. },
-                ..
-            }) = r.active.borrow_mut().as_mut()
-            {
-                *note = "BRIEFING · VOICE ARRIVES IN PHASE 4".into();
-            }
-        });
-
         this
     }
 

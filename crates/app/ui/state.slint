@@ -42,11 +42,17 @@ export struct CalendarEventRow {
     birthday: bool,
 }
 
+export struct NewsItem {
+    title: string,
+    source: string,
+    age: string,
+    url: string,
+}
+
 export global Google {
     in property <[CalendarEventRow]> events;
     in property <string> tasks-status: "NOT CONNECTED";
     in property <string> calendar-status: "NOT CONNECTED";
-    in property <string> new-mail: "NOT CONNECTED";
 }
 
 export global Dash {
@@ -54,9 +60,6 @@ export global Dash {
     in property <[AlarmRow]> alarms;
     in property <[ReminderRow]> reminders;
     in property <[Marker]> markers;
-
-    // Briefing column facts
-    in property <string> next-alarm: "NONE";
     in property <string> open-reminders: "0";
 
     // Command bar
@@ -74,7 +77,6 @@ export global Dash {
     callback alarm-remove(int);
     callback reminder-toggle(int);
     callback reminder-remove(int);
-    callback play-briefing();
 
     // Assistant answer card (above the command bar)
     in property <bool> answer-visible;
@@ -121,7 +123,6 @@ export global Ring {
     callback alarm-snooze();
     callback alarm-dismiss();
     callback alarm-close();
-    callback play-briefing();
 }
 
 // Weather panel (Open-Meteo).

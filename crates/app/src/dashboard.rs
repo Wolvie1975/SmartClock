@@ -143,10 +143,6 @@ impl DashController {
                 c.request_google_sync();
             }
         });
-        handler!(on_play_briefing, |c, ui| {
-            c.show_result(&ui, "BRIEFING · VOICE ARRIVES IN PHASE 4", false, false);
-        });
-
         this.refresh(ui);
         this
     }
@@ -209,14 +205,9 @@ impl DashController {
         if sync_google {
             self.request_google_sync();
         }
-        let summary = if applied.brief {
-            "BRIEFING · VOICE ARRIVES IN PHASE 4".to_string()
-        } else {
-            applied.summary
-        };
         let can_undo = applied.undo.is_some();
         *self.undo.borrow_mut() = applied.undo;
-        self.show_result(ui, &summary, true, can_undo);
+        self.show_result(ui, &applied.summary, true, can_undo);
         ui.global::<Dash>().set_command(SharedString::new());
         Ok(())
     }
@@ -295,7 +286,7 @@ impl DashController {
                 .collect::<Vec<_>>(),
         );
 
-        // Briefing facts + idle info strip
+        // Idle info strip
         let next = alarms
             .iter()
             .filter(|a| a.enabled)
@@ -311,7 +302,6 @@ impl DashController {
             }
         });
         let open = reminders.iter().filter(|r| !r.done).count();
-        dash.set_next_alarm(next_label.clone().unwrap_or_else(|| "NONE".into()).into());
         dash.set_open_reminders(open.to_string().into());
 
         let mut strip = vec![match &next_label {

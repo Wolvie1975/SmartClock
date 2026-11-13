@@ -4,12 +4,12 @@ Where the project stands at the end of the first build session (2026-11-13), for
 
 ## State in one paragraph
 
-A full-screen Rust + Slint desk clock for a Fedora 45 GNOME/Wayland laptop. Phases 1 and 2 are done: clock, idle screen, timers, alarms and reminders in SQLite, the offline command parser, timer takeover, alarm ringing with snooze, and the weather panel. Phase 3 is mostly done: a local assistant on Ollama with tool calls, the command-bar answer card, and the Assistant screen with saved conversations. The app is in the GNOME app menu via `scripts/install-local.sh`. All work is committed on `development`. The repo is `https://github.com/Wolvie1975/SmartClock` (branch `development`). Commits after `0b0b6e7` had not been pushed when this file was written; run `git status -sb` to check.
+A full-screen Rust + Slint desk clock for a Fedora 45 GNOME/Wayland laptop. The app has timers, alarms and reminders in SQLite, an offline command parser, timer takeover, alarm ringing with snooze, weather, Google Calendar/Tasks integration, and a three-story Google News column with an offline cache. Phase 3 is mostly done: a local assistant on Ollama with tool calls, the command-bar answer card, and the Assistant screen with saved conversations. The News change is in the current worktree; check `git status -sb` before continuing. The app is in the GNOME app menu via `scripts/install-local.sh`. The repo is `https://github.com/Wolvie1975/SmartClock` (branch `development`). Commits after `0b0b6e7` had not been pushed when this file was written.
 
 ## The user's decisions and preferences (keep to these)
 
-- **Scope: clock duties only.** Time, alarms, timers, reminders, today's schedule, weather and the briefing. **No coding or research features, and no general-assistant creep.** The user removed the design's coding/research routes on purpose.
-- **AI routing is local-first.** Clock commands go to the built-in parser (no AI). Everything else, including the briefing, goes to local Ollama. The cloud (Anthropic first, Gemini later) is used **only** when the user flips a conversation to CLOUD. Never auto-escalate to the cloud.
+- **Scope: clock duties only.** Time, alarms, timers, reminders, today's schedule, weather and three Google News RSS stories. **No coding or research features, and no general-assistant creep.** The user removed the design's coding/research routes on purpose.
+- **AI routing is local-first.** Clock commands go to the built-in parser (no AI). User questions go to local Ollama. The cloud (Anthropic first, Gemini later) is used **only** when the user flips a conversation to CLOUD. The News feed is fetched separately and not sent to an AI model.
 - **Ollama runs in Docker** (container `ollama`, `127.0.0.1:11434`, model `llama3.2:3b`). The laptop is CPU-only (Intel UHD 630, 11 GB RAM, 6 cores), so small models only. Fedora's own `ollama-base` package was also installed and clashed; use `docker exec ollama ollama …`.
 - **Nothing the clock itself needs may depend on Docker.** Storage is embedded SQLite (the user asked about SQL Server and agreed SQLite fits).
 - **Weather:** °F and mph. The location is set by typing `location <city>` in the command bar. Forecast shows **today and tomorrow only**.
@@ -23,7 +23,7 @@ cargo run -p smart-clock -- --windowed                 # dev, windowed
 cargo run -p smart-clock -- --windowed --idle-minutes 0.25   # idle screen after 15 s
 scripts/install-local.sh                               # rebuild + update the app-menu copy
 cargo clippy --workspace --all-targets                 # must stay clean
-cargo test --workspace                                 # 45 tests
+cargo test --workspace                                 # unit tests (plus ignored live tests)
 cargo test -p ai -- --ignored --nocapture              # live: Ollama chat + tool call
 cargo test -p smart-clock -- --ignored --nocapture     # live: full assistant loop, follow-ups
 ```
@@ -37,14 +37,16 @@ cargo test -p smart-clock -- --ignored --nocapture     # live: full assistant lo
 | Path | What |
 | --- | --- |
 | `crates/clock-core/src/command.rs` | Offline parser + time rules (`parse`, `parse_clock_time`, `parse_date_text`) |
-| `crates/clock-core/src/{model,store,actions}.rs` | Types; SQLite with append-only `MIGRATIONS` (3 so far); `apply` + `Undo` used by every input path |
+| `crates/clock-core/src/{model,store,actions}.rs` | Types; SQLite with append-only migrations, including the News cache; `apply` + `Undo` used by every input path |
 | `crates/ai/src/{lib,openai}.rs` | `Provider` trait; OpenAI-compatible adapter (Ollama `/v1`) with SSE + tool-call assembly |
 | `crates/app/src/main.rs` | Startup, 4 Hz tick, idle, theme, quit, app id |
+| `crates/news/src/lib.rs` | Google News RSS fetch/parser, age labels, HTTPS link validation |
+| `crates/app/src/news_task.rs` | 15-minute refresh, offline cache hydration, and UI-thread rendering |
 | `crates/app/src/dashboard.rs` | Dashboard columns, command bar, location / ask hooks |
 | `crates/app/src/ringing.rs`, `sound.rs` | Timer takeover, alarm ringing, snooze; synthesized tones via cpal |
 | `crates/app/src/weather.rs` | Open-Meteo fetch, geocoding, cache, panel view, text summary for the model |
 | `crates/app/src/assistant.rs`, `tools.rs` | Answer card + conversations; model loop; tools wired to `actions::apply` |
-| `crates/app/ui/*.slint` | `app` (window, header), `dashboard`, `assistant`, `takeover`, `weather`, `state` (globals `Dash`, `Ring`, `Weather`, `Chat`), `theme` |
+| `crates/app/ui/*.slint` | `app` (window, header), `dashboard`, `widgets/news-column`, `assistant`, `takeover`, `weather`, `state` (globals `Dash`, `Ring`, `Weather`, `Chat`), `theme` |
 | `scripts/install-local.sh`, `data/` | App-menu install, launcher template, icon |
 
 ## Lessons from this session (avoid repeating)
@@ -79,6 +81,6 @@ cargo test -p smart-clock -- --ignored --nocapture     # live: full assistant lo
    - **Settings → AI & Models:** the Ollama URL and model, plus the cloud provider, model and API key. The key goes in GNOME Keyring via `oo7`, never in SQLite.
    - Then **Gemini**.
 4. **A Settings screen** for the values above: idle, alarm sounds, snooze, volume, theme, start screen.
-5. **Phase 4:** voice (cpal capture, whisper-rs pinned to an exact version, Piper as a separate process) and the briefing, which runs on the local model only.
-6. **Phase 5:** Google (calendar via GOA, Tasks sync for untimed reminders, Gmail unread count only).
+5. **Phase 4:** voice (cpal capture, whisper-rs pinned to an exact version, Piper as a separate process); this remains held back.
+6. **Phase 5:** Google Calendar via GOA and Tasks sync for untimed reminders. News headlines use a cached Google News RSS feed; Gmail is not integrated.
 7. **Phase 6:** the background scheduler as a systemd user service, logind resume and catch-up, and RPM packaging.

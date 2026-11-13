@@ -2,8 +2,9 @@ import { Theme } from "theme.slint";
 import { Label } from "widgets/label.slint";
 import { DayTimeline } from "widgets/timeline.slint";
 import { TextButton, Toggle, Check } from "widgets/controls.slint";
-import { Dash, Google, TimerRow, AlarmRow, ReminderRow } from "state.slint";
+import { Dash, TimerRow, AlarmRow, ReminderRow, NewsItem } from "state.slint";
 import { WeatherPanel } from "weather.slint";
+import { NewsColumn } from "widgets/news-column.slint";
 
 // ---------------------------------------------------------------------------
 // Columns
@@ -193,23 +194,6 @@ component ReminderItem inherits Rectangle {
     RowLine { y: root.height - 1px; }
 }
 
-component Fact inherits Rectangle {
-    in property <string> key;
-    in property <string> value;
-    in property <bool> pending: false;
-    height: 56px;
-    HorizontalLayout {
-        Label { text: root.key; vertical-alignment: center; }
-        Rectangle { horizontal-stretch: 1; }
-        Label {
-            text: root.value;
-            color: root.pending ? Theme.muted : Theme.text;
-            vertical-alignment: center;
-        }
-    }
-    RowLine { y: root.height - 1px; }
-}
-
 // ---------------------------------------------------------------------------
 // Assistant answer card
 
@@ -369,6 +353,10 @@ export component Dashboard inherits Rectangle {
     in property <string> ampm;
     in property <string> date-label;
     in property <float> day-progress;
+    in property <[NewsItem]> news-items;
+    in property <string> news-footer;
+    in property <bool> news-offline;
+    callback open-news(string);
 
     background: Theme.bg;
 
@@ -416,7 +404,7 @@ export component Dashboard inherits Rectangle {
             markers: Dash.markers;
         }
 
-        // Timers · Alarms · Reminders · Briefing
+        // Timers · Alarms · Reminders · News
         HorizontalLayout {
             vertical-stretch: 1;
             spacing: 0;
@@ -469,43 +457,12 @@ export component Dashboard inherits Rectangle {
                 }
             }
             Rectangle { width: Theme.hairline; background: Theme.line; }
-            Column {
+            NewsColumn {
                 horizontal-stretch: 1;
-                title: "BRIEFING";
-                count: "MANUAL";
-                addable: false;
-                VerticalLayout {
-                    vertical-stretch: 1;
-                    Fact { key: "NEXT ALARM"; value: Dash.next-alarm; }
-                    Fact { key: "OPEN REMINDERS"; value: Dash.open-reminders; }
-                    Fact {
-                        key: "CALENDAR TODAY";
-                        value: Google.events.length == 0 ? "NONE" : Google.events.length + " EVENTS";
-                        pending: Google.calendar-status != "READY";
-                    }
-                    Fact {
-                        key: "NEW MAIL";
-                        value: Google.new-mail;
-                        pending: Google.new-mail == "NOT CONNECTED" || Google.new-mail == "MAIL UNAVAILABLE";
-                    }
-                    if Google.events.length > 0: Flickable {
-                        height: min(content.preferred-height, 220px);
-                        content-height: content.preferred-height;
-                        content := VerticalLayout {
-                            width: parent.width;
-                            for e in Google.events: Fact {
-                                key: e.when;
-                                value: e.title;
-                            }
-                        }
-                    }
-                    Rectangle { vertical-stretch: 1; min-height: 16px; }
-                    TextButton {
-                        text: "PLAY BRIEFING";
-                        primary: true;
-                        clicked => { Dash.play-briefing(); }
-                    }
-                }
+                items: root.news-items;
+                footer: root.news-footer;
+                offline: root.news-offline;
+                open-story(url) => { root.open-news(url); }
             }
         }
 

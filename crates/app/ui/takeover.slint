@@ -233,12 +233,6 @@ export component AlarmTakeover inherits Rectangle {
         Rectangle { height: 12px; }
         HorizontalLayout {
             alignment: center;
-            spacing: 24px;
-            BigButton {
-                text: "PLAY BRIEFING";
-                primary: true;
-                clicked => { Ring.play-briefing(); }
-            }
             BigButton {
                 text: "DASHBOARD →";
                 clicked => { Ring.alarm-close(); }

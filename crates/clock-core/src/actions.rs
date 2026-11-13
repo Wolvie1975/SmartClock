@@ -23,17 +23,11 @@ pub struct Applied {
     /// Short uppercase confirmation for the command bar / transcript.
     pub summary: String,
     pub undo: Option<Undo>,
-    /// The caller should play the briefing (Phase 4).
-    pub brief: bool,
 }
 
 impl Applied {
     fn new(summary: String, undo: Option<Undo>) -> Self {
-        Self {
-            summary,
-            undo,
-            brief: false,
-        }
+        Self { summary, undo }
     }
 }
 
@@ -119,11 +113,6 @@ pub fn apply(
             };
             Applied::new(summary, Some(Undo::RestoreTimers(removed)))
         }
-        Command::Brief => Applied {
-            summary: "BRIEFING".into(),
-            undo: None,
-            brief: true,
-        },
     })
 }
 
@@ -232,6 +221,5 @@ mod tests {
         let r = run(&s, "remind me to renew car registration");
         undo(&s, r.undo.as_ref().unwrap()).unwrap();
         assert_eq!(s.reminders().unwrap().len(), 2);
-        assert!(run(&s, "brief me").brief);
     }
 }

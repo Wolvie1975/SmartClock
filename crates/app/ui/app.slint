@@ -5,9 +5,10 @@ import { Dashboard } from "dashboard.slint";
 import { AssistantScreen } from "assistant.slint";
 import { SettingsScreen } from "settings.slint";
 import { TimerTakeover, AlarmTakeover } from "takeover.slint";
+import { NewsItem } from "state.slint";
 
 export { Theme }
-export { Dash, TimerRow, AlarmRow, ReminderRow, Marker, Ring, AlarmPhase, Weather, HourCell, DayCell, Chat, ChatMsg, ConvRow, Google, CalendarEventRow } from "state.slint";
+export { Dash, TimerRow, AlarmRow, ReminderRow, Marker, Ring, AlarmPhase, Weather, HourCell, DayCell, Chat, ChatMsg, ConvRow, Google, CalendarEventRow, NewsItem } from "state.slint";
 
 export enum Screen { idle, dashboard, assistant, settings }
 export enum Overlay { none, timer, alarm }
@@ -71,17 +72,20 @@ export component AppWindow inherits Window {
     in property <string> google-status: "NOT CONNECTED";
     in property <string> google-calendar-status: "NOT CONNECTED";
     in property <bool> google-tasks: true;
-    in property <bool> google-mail: true;
     in property <bool> google-busy: false;
+    in property <[NewsItem]> news-items;
+    in property <string> news-footer: "LOADING · GOOGLE NEWS";
+    in property <bool> news-offline: false;
     in-out property <string> settings-save-status: "";
 
     callback activity();          // any pointer movement → reset idle timer
     callback toggle-theme();
     callback quit();
-    callback save-settings(string, string, string, string, string, string, bool, bool);
-    callback connect-google(string, bool, bool);
+    callback save-settings(string, string, string, string, string, string, bool);
+    callback connect-google(string, bool);
     callback connect-calendar();
     callback disconnect-google();
+    callback open-news(string);
 
     // CLOSE asks once before quitting, because alarms stop when the app closes.
     property <bool> confirm-close: false;
@@ -171,6 +175,10 @@ export component AppWindow inherits Window {
                 ampm: root.ampm;
                 date-label: root.date-label;
                 day-progress: root.day-progress;
+                news-items: root.news-items;
+                news-footer: root.news-footer;
+                news-offline: root.news-offline;
+                open-news(url) => { root.open-news(url); }
             }
             if root.screen == Screen.assistant: AssistantScreen { }
             if root.screen == Screen.settings: SettingsScreen {
@@ -185,14 +193,13 @@ export component AppWindow inherits Window {
                 google-status: root.google-status;
                 google-calendar-status: root.google-calendar-status;
                 google-tasks: root.google-tasks;
-                google-mail: root.google-mail;
                 google-busy: root.google-busy;
                 save-status: root.settings-save-status;
-                save(local_url, local_model, cloud_provider, cloud_model, api_key, google_client_id, google_tasks, google_mail) => {
-                    root.save-settings(local_url, local_model, cloud_provider, cloud_model, api_key, google_client_id, google_tasks, google_mail);
+                save(local_url, local_model, cloud_provider, cloud_model, api_key, google_client_id, google_tasks) => {
+                    root.save-settings(local_url, local_model, cloud_provider, cloud_model, api_key, google_client_id, google_tasks);
                 }
-                connect_google(client_id, tasks, mail) => {
-                    root.connect-google(client_id, tasks, mail);
+                connect_google(client_id, tasks) => {
+                    root.connect-google(client_id, tasks);
                 }
                 connect_calendar => { root.connect-calendar(); }
                 disconnect_google => { root.disconnect-google(); }

@@ -4,12 +4,11 @@ use anyhow::{bail, Context, Result};
 use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::{Client, StatusCode};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::{collections::HashSet, time::Duration};
+use std::time::Duration;
 use url::Url;
 
 pub const CALENDAR_READ_SCOPE: &str = "https://www.googleapis.com/auth/calendar.readonly";
 pub const TASKS_SCOPE: &str = "https://www.googleapis.com/auth/tasks";
-pub const GMAIL_METADATA_SCOPE: &str = "https://www.googleapis.com/auth/gmail.metadata";
 
 const API_ROOT: &str = "https://www.googleapis.com";
 const USER_AGENT: &str = concat!("smart-clock/", env!("CARGO_PKG_VERSION"));
@@ -82,13 +81,6 @@ impl Task {
     pub fn done(&self) -> bool {
         self.status == "completed"
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MailUnread {
-    pub count: usize,
-    pub history_id: String,
-    pub used_inbox_fallback: bool,
 }
 
 /// Authenticated Google Workspace REST client.
@@ -307,114 +299,6 @@ impl GoogleApi {
         } else {
             bail!("Google API returned HTTP {}", response.status())
         }
-    }
-
-    pub async fn unread_mail(&self, previous_history_id: Option<&str>) -> Result<MailUnread> {
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct Profile {
-            history_id: String,
-        }
-        let profile: Profile = self
-            .json(
-                self.http
-                    .get(api_url(&["gmail", "v1", "users", "me", "profile"]))
-                    .bearer_auth(&self.access_token),
-            )
-            .await?;
-        let Some(history_id) = previous_history_id else {
-            let count = self.inbox_unread_count().await?;
-            return Ok(MailUnread {
-                count,
-                history_id: profile.history_id,
-                used_inbox_fallback: true,
-            });
-        };
-
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct HistoryPage {
-            #[serde(default)]
-            history: Vec<HistoryItem>,
-            #[serde(default)]
-            next_page_token: Option<String>,
-        }
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct HistoryItem {
-            #[serde(default)]
-            labels_added: Vec<LabelAdded>,
-        }
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct LabelAdded {
-            message: Option<MessageId>,
-            #[serde(default)]
-            label_ids: Vec<String>,
-        }
-        #[derive(Deserialize)]
-        struct MessageId {
-            id: String,
-        }
-
-        let mut messages = HashSet::new();
-        let mut page_token: Option<String> = None;
-        loop {
-            let mut request = self
-                .http
-                .get(api_url(&["gmail", "v1", "users", "me", "history"]))
-                .bearer_auth(&self.access_token)
-                .query(&[
-                    ("startHistoryId", history_id.to_string()),
-                    ("historyTypes", "labelAdded".to_string()),
-                    ("maxResults", "500".to_string()),
-                ]);
-            if let Some(token) = page_token.as_deref() {
-                request = request.query(&[("pageToken", token)]);
-            }
-            let response = request.send().await.context("requesting Gmail history")?;
-            if response.status() == StatusCode::NOT_FOUND {
-                let count = self.inbox_unread_count().await?;
-                return Ok(MailUnread {
-                    count,
-                    history_id: profile.history_id,
-                    used_inbox_fallback: true,
-                });
-            }
-            let page: HistoryPage = Self::decode(response).await?;
-            for added in page.history.into_iter().flat_map(|h| h.labels_added) {
-                if added.label_ids.iter().any(|label| label == "UNREAD") {
-                    if let Some(message) = added.message {
-                        messages.insert(message.id);
-                    }
-                }
-            }
-            page_token = page.next_page_token;
-            if page_token.is_none() {
-                break;
-            }
-        }
-        Ok(MailUnread {
-            count: messages.len(),
-            history_id: profile.history_id,
-            used_inbox_fallback: false,
-        })
-    }
-
-    async fn inbox_unread_count(&self) -> Result<usize> {
-        #[derive(Deserialize)]
-        struct Label {
-            #[serde(default)]
-            messages_unread: usize,
-        }
-        let label: Label = self
-            .json(
-                self.http
-                    .get(api_url(&["gmail", "v1", "users", "me", "labels", "INBOX"]))
-                    .bearer_auth(&self.access_token),
-            )
-            .await?;
-        Ok(label.messages_unread)
     }
 
     async fn json<T: DeserializeOwned>(&self, request: reqwest::RequestBuilder) -> Result<T> {

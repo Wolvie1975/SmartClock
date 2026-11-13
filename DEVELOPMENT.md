@@ -1,6 +1,6 @@
 # Fedora AI Smart Clock — Development Guide
 
-A full-screen desktop clock and dashboard for a Fedora 45 laptop, written in **Rust + Slint**. It has timers, alarms, reminders, weather, a day timeline, a briefing, Google Calendar/Tasks/Gmail integration, and a multi-provider AI assistant with push-to-talk voice.
+A full-screen desktop clock and dashboard for a Fedora 45 laptop, written in **Rust + Slint**. It has timers, alarms, reminders, a three-story Google News RSS column with an offline cache, weather, a day timeline, Google Calendar/Tasks integration, and a multi-provider AI assistant.
 
 | Reference | Link |
 |---|---|
@@ -22,7 +22,7 @@ A full-screen desktop clock and dashboard for a Fedora 45 laptop, written in **R
 | Screen | Purpose |
 |---|---|
 | Idle (screensaver) | Huge clock, one info strip, day timeline. No controls. Shown after the idle timeout. |
-| Dashboard | Clock, weather panel (now, next 8 hours, today and tomorrow), day timeline, Timers · Alarms · Reminders · Briefing columns, command bar. Shown on mouse movement. |
+| Dashboard | Clock, weather panel (now, next 8 hours, today and tomorrow), day timeline, Timers · Alarms · Reminders · News columns, command bar. Shown on mouse movement. |
 | Assistant | Conversation list, transcript with route labels, LOCAL / CLOUD switch, privacy side panel. |
 | Settings | 01 AI & Models · 02 Accounts · 03 Appearance · 04 Idle screen · 05 Voice & Mic · 06 Alarm sounds · 07 Startup |
 | Timer takeover | Last 10 seconds of a timer, then TIME'S UP. Overlays everything. |
@@ -44,9 +44,9 @@ Top-level tabs: **DASHBOARD · ASSISTANT · SETTINGS** (there is no Alarms tab; 
 | Second time zone | None |
 | Timers / alarms / reminders | Added and removed directly on the dashboard |
 | Timer finish | Last 10 s take over the whole screen |
-| Briefing | **Manual only** (button or "brief me"); no weather (the weather panel covers it); today's calendar incl. birthdays; Gmail new-unread **count only** |
+| News | Three Google News RSS stories; refresh every 15 minutes, preserve the last successful fetch in SQLite, open stories in the browser |
 | Reminders ↔ Google | Untimed reminders sync with **Google Tasks**; timed reminders stay local (Tasks API has no time of day) |
-| Google sign-in | GNOME Online Accounts (calendar) first; in-app OAuth for Tasks / Gmail / calendar edit |
+| Google sign-in | GNOME Online Accounts for Calendar; in-app OAuth for Tasks |
 | AI settings | Inside Settings → AI & Models; no separate tab |
 | Weather | Open-Meteo (no API key) |
 | Storage | Embedded SQLite (`rusqlite`, bundled). No database server, so alarms never depend on Docker or a service being up |
@@ -138,16 +138,19 @@ SmartClock/
 │   │   └── src/                #   scheduler, command parser, storage (SQLite)
 │   ├── ai/                     # provider trait + adapters (Phase 3)
 │   ├── voice/                  # cpal capture, whisper-rs, Piper bridge (Phase 4)
-│   ├── google/                 # GOA, OAuth, Calendar, Tasks, Gmail (Phase 5)
+│   ├── google/                 # GOA, OAuth, Calendar and Tasks (Phase 5)
+│   ├── news/                   # Google News RSS parsing and safe story links
 │   └── app/                    # the Slint application (binary: smart-clock)
 │       ├── build.rs
 │       ├── src/main.rs
+│       ├── src/news_task.rs    # async RSS refresh and UI-thread cache updates
 │       ├── src/inhibit.rs      # GNOME idle inhibit
 │       └── ui/
 │           ├── app.slint       # AppWindow, header tabs, screen switching
 │           ├── theme.slint     # global Theme (tokens)
 │           ├── idle.slint
 │           ├── dashboard.slint
+│           ├── widgets/news-column.slint
 │           ├── assistant.slint
 │           ├── settings.slint
 │           ├── takeover.slint  # timer + alarm overlays
@@ -246,7 +249,7 @@ Type: JetBrains Mono for numerals and labels, Inter Tight for body text. Clock s
 
 **Timer takeover:** a giant countdown, the timer name, and ten blocks that empty once per second, with +1 MIN and STOP. At zero it shows TIME'S UP, pulsing between accent and background once per second (never faster), with +1 MIN, RESTART and DISMISS. It is announced to screen readers and plays the timer sound.
 
-**Alarm ringing:** current time in the accent color, the alarm label, a volume bar that ramps from 20% to 100% over 30 s, and the elapsed ringing time. Buttons are SNOOZE · 9 MIN (the snooze length comes from Settings) and DISMISS. The background alternates bg/panel once per second. Snoozed shows a countdown and "rings again at…". Dismissed shows "Good morning", PLAY BRIEFING (manual) and DASHBOARD →.
+**Alarm ringing:** current time in the accent color, the alarm label, a volume bar that ramps from 20% to 100% over 30 s, and the elapsed ringing time. Buttons are SNOOZE · 9 MIN (the snooze length comes from Settings) and DISMISS. The background alternates bg/panel once per second. Snoozed shows a countdown and "rings again at…". Dismissed shows "Good morning" and DASHBOARD →.
 
 **Missed alarms:** an alarm found more than 5 minutes late (app closed or laptop asleep) is skipped and logged rather than rung. Catch-up after sleep is Phase 6.
 
@@ -300,7 +303,7 @@ CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 -- theme, clock_format, idle_minutes, burn_in, keep_awake, mic_device, whisper_model,
 -- language, speak_replies, tts_voice, tts_speed, alarm_sound, timer_sound, volume,
 -- ramp, snooze_min, autostop_min, open_at_login, start_on, fullscreen, display,
--- run_in_background, catch_up, google_method, tasks_sync, briefing_last_utc …
+-- run_in_background, catch_up, google_method, tasks_sync …
 
 CREATE TABLE conversations (id INTEGER PRIMARY KEY, title TEXT, created_utc TEXT);
 CREATE TABLE messages (
@@ -326,7 +329,6 @@ The dashboard command bar and the assistant both run input through this parser f
 | `remind me to renew car registration` | Untimed reminder (syncs to Google Tasks) |
 | `remind me tomorrow to call the bank` | Dated reminder, no time (syncs) |
 | `cancel tea timer`, `stop all timers` | Remove timers |
-| `brief me` | Play the briefing |
 | `location Austin, TX` | Set the weather location (looked up once via Open-Meteo geocoding; handled by the dashboard, not the offline parser, because it needs the network) |
 
 Also understood: `set a 5 minute timer`, `remind me in 20 minutes to …`, `remind me to … tomorrow at 9`, `alarm 7am mon wed fri`, `alarm 5:30am gym weekdays` (label "Gym"), `noon` / `midnight`, `cancel timer` (latest).
@@ -338,7 +340,6 @@ pub enum Command {
     AddAlarm   { time: NaiveTime, days: u8, label: Option<String> },   // days: Mon=1 … Sun=64, 0 = one-off
     AddReminder{ text: String, date: Option<NaiveDate>, time: Option<NaiveTime> },
     CancelTimer{ target: TimerTarget },                                // Latest | Named(String) | All
-    Brief,
 }
 
 /// `now` is local wall-clock time (pass `Local::now().naive_local()`), which keeps tests
@@ -398,21 +399,19 @@ Lessons from testing with `llama3.2:3b` (see the ignored live tests in `ai` and 
 
 ### 10.3 Routing and privacy
 
-The assistant is there for the clock's job: time, alarms, timers, reminders, today's schedule, weather and the briefing. It is not a general coding or research assistant, so there is no routing by task type.
+The assistant is there for the clock's job: time, alarms, timers, reminders, today's schedule and weather. It is not a general coding or research assistant, so there is no routing by task type. The News column is fetched independently and is not an assistant task.
 
 | Input | Route |
 |---|---|
 | Clock commands | Built-in parser · no AI |
-| Everything else, including the daily briefing | Ollama · local (`llama3.2:3b`) |
+| Everything else | Ollama · local (`llama3.2:3b`) |
 | A conversation you switch to CLOUD | Anthropic · cloud (Gemini later) |
 
 The per-conversation switch is **LOCAL / CLOUD**, and every conversation starts on LOCAL. Nothing leaves the laptop unless you flip a conversation to CLOUD yourself. The app never decides to send something to the cloud.
 
 - Every cloud message is labelled in the transcript: `CLOUD · SENT OFF DEVICE`.
 - If Ollama is unreachable, the assistant says so and offers to send that one message to the cloud. It never switches by itself.
-- The briefing always runs locally, whatever the switch says.
-
-**Gmail data never goes to a cloud model.** The briefing only uses the unread count anyway.
+The News feed is not sent to either AI provider.
 
 ---
 
@@ -436,12 +435,12 @@ Store Whisper models and Piper voices in `~/.local/share/smart-clock/models/`.
 
 | Feature | Data | Permission (scope) | Works with GNOME Online Accounts? |
 |---|---|---|---|
-| Timeline + briefing events, birthdays | Calendar (read) | `calendar.readonly` | Yes |
+| Timeline events and birthdays | Calendar (read) | `calendar.readonly` | Yes |
 | Assistant adds/moves events | Calendar (edit) | `calendar.events` | No, needs in-app sign-in |
 | Reminders sync | Tasks | `tasks` | No, needs in-app sign-in |
-| Briefing new-unread count | Gmail | `gmail.metadata` (or `gmail.labels` if only the unread total is needed) | No, needs in-app sign-in |
+| News headlines | Google News RSS | Public feed; no OAuth | Not applicable |
 
-> **Verify current rules.** Google changes scope rules and verification requirements. Gmail scopes are classed as restricted. For a personal app in testing mode, Google shows an "unverified app" screen, and refresh tokens expire after about 7 days, so the Accounts screen shows a "reconnect by" date.
+> **Verify current rules.** Google changes OAuth requirements. For a personal app in testing mode, Google may show an "unverified app" screen, and refresh tokens can expire after about 7 days.
 
 ### 12.2 GNOME Online Accounts (calendar, no Google Cloud setup)
 
@@ -451,9 +450,9 @@ Two ways to read the calendar:
 
 Start with option 1 and fall back to option 2 if needed.
 
-### 12.3 In-app OAuth (Tasks, Gmail, calendar edit)
+### 12.3 In-app OAuth (Tasks)
 
-1. Create a Google Cloud project, enable the Calendar, Tasks and Gmail APIs, and create an **OAuth client of type "Desktop app"**.
+1. Create a Google Cloud project, enable the Tasks API, and create an **OAuth client of type "Desktop app"**.
 2. Use the `oauth2` crate's authorization-code flow with **PKCE**, redirecting to `http://127.0.0.1:<random port>`.
 3. Open the consent URL in the browser (`xdg-open`), then catch the redirect on a one-shot local listener.
 4. Save the refresh token in GNOME Keyring:
@@ -468,9 +467,9 @@ keyring.create_item(
 ).await?;
 ```
 
-5. Request only the scopes ticked in Settings → Accounts. Changing them starts a new consent.
+5. Request only the Tasks scope. Changing the client ID or Tasks setting requires reconnecting.
 
-Create a Desktop app OAuth client ID in Google Cloud Console under APIs & Services → Credentials, enable the Tasks and Gmail APIs, and add your account as a test user. In Smart Clock, paste the client ID into **Google Client ID**, choose Tasks and/or Gmail, click **Save Settings**, then **Connect Tasks / Gmail**. This client ID is separate from the GNOME login; the app stores its refresh token in GNOME Keyring, while Calendar remains a separate GNOME Online Accounts connection. Google sign-in and account sync require a configured OAuth client and were not part of offline test runs.
+Create a Desktop app OAuth client ID in Google Cloud Console under APIs & Services → Credentials, enable the Tasks API, and add your account as a test user. In Smart Clock, paste the client ID into **Google Client ID**, leave Tasks enabled, click **Save Settings**, then **Connect Tasks**. This client ID is separate from the GNOME login; the app stores its refresh token in GNOME Keyring, while Calendar remains a separate GNOME Online Accounts connection. Google sign-in and account sync require a configured OAuth client and were not part of offline test runs.
 
 ### 12.4 Reminders ↔ Google Tasks rules
 
@@ -480,11 +479,12 @@ Create a Desktop app OAuth client ID in Google Cloud Console under APIs & Servic
 - Sync on startup, every 5 minutes, and right after a local change. Resolve conflicts by `updated` timestamp (last writer wins) and keep `etag` to detect changes.
 - Use one Tasks list, either the default "My Tasks" or a chosen list (a later setting).
 
-### 12.5 Briefing data
+### 12.5 News feed
 
-- **Calendar today:** all-day items and birthdays first, then timed events. Birthdays come from Google Calendar's birthday events, so `calendar.readonly` covers them. Timed events also become markers on the day timeline.
-- **Gmail new unread:** at each briefing, save the mailbox `historyId`. Next time, count messages added with the UNREAD label since then using `users.history.list`. If that history has expired, fall back to the INBOX unread total. Show the count only; never senders, subjects or content.
-- **Summary:** generated by the local model from those facts plus open reminders and the next alarm, then spoken by Piper. It isn't shown as text, to save space.
+- Fetch the top three stories from Google News RSS at startup and every 15 minutes.
+- Store the last successful result in SQLite and keep showing it when a fetch fails or the clock is offline.
+- Recalculate relative story ages every minute. Story links open in the system browser and must use HTTPS.
+- Calendar events and birthdays remain in the timeline; they are independent of the News column.
 
 ---
 
@@ -535,14 +535,13 @@ The launcher template is `data/smart-clock.desktop.in`; the install script fills
 - [ ] `cpal` capture and push to talk, with a level meter in Settings → Voice & Mic
 - [ ] `whisper-rs` transcription, then the same parser/AI path as typed input
 - [ ] Piper replies, voice test, speed
-- [ ] Manual briefing playback (PLAY BRIEFING, "brief me")
 
 ### Phase 5: Google
 - [x] Settings → Accounts: client ID, service selection, and connection status
-- [x] Calendar through GOA (section 12.2): timeline markers and event list
+- [x] Calendar through GOA (section 12.2): timeline markers
 - [x] In-app OAuth with PKCE, refresh token in the keyring (section 12.3)
 - [x] Tasks sync for untimed reminders, GOOGLE/LOCAL tags (section 12.4)
-- [x] Gmail new-unread count (section 12.5)
+- [x] Google News RSS column, age labels, safe browser links, and offline SQLite cache (section 12.5)
 
 ### Phase 6: Background and packaging
 - [ ] Scheduler as a systemd user service with a D-Bus interface
@@ -559,5 +558,5 @@ The launcher template is `data/smart-clock.desktop.in`; the install script fills
 | Idle ↔ dashboard transition | Cut or fade. Currently a cut; try a 200 ms fade and decide by feel. |
 | 12-hour time picker in Slint | Needed for alarms and reminders; the browser picker in the prototype doesn't exist in Slint. |
 | Cloud model | Used only for conversations switched to CLOUD. Defaults to Claude Opus 5.5; changeable in Settings → AI & Models. |
-| Google connection | GOA first (recommended); in-app OAuth for Tasks and Gmail. |
+| Google connection | GOA for Calendar; in-app OAuth for Tasks. News uses Google News RSS and needs no sign-in. |
 | Which Tasks list syncs | The default list for now; maybe a picker later. |
