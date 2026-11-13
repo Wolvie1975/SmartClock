@@ -7,6 +7,8 @@ A full-screen desktop clock and dashboard for a Fedora 45 laptop, written in **R
 | Design canvas (all screens, dark + light, clickable) | https://claude.ai/artifact/LBAE37B37bFNrFxicYzqxG |
 | Design handoff doc (decisions, tokens, behavior) | https://claude.ai/artifact/1D8z1npXjRiowFfg6vKsbt |
 
+> **Setting up a machine?** See [INSTALL.md](INSTALL.md).
+>
 > **How to use this file:** work through the phases in section 14 in order. Each phase ends with something you can run. Section numbers are referenced from the checklists.
 
 ---
@@ -85,11 +87,9 @@ sudo dnf install -y \
 
 ### 3.3 Runtime tools (later phases)
 
-```bash
-# Ollama (local LLM) — if not already running in your homelab
-curl -fsSL https://ollama.com/install.sh | sh
-ollama pull llama3.1:8b
+**Ollama** (local LLM) runs in Docker, bound to `127.0.0.1:11434`, with `llama3.2:3b` as the default model (this laptop has no GPU Ollama can use, so a small model keeps replies quick). The commands are in [INSTALL.md](INSTALL.md) section 5.
 
+```bash
 # Piper TTS, isolated in its own environment (Phase 4)
 pipx install piper-tts        # or: python -m venv ~/.local/piper && ~/.local/piper/bin/pip install piper-tts
 ```
@@ -395,10 +395,10 @@ pub trait Provider: Send + Sync {
 | Task | Default route |
 |---|---|
 | Clock commands | Built-in parser · no AI |
-| General questions | Ollama · local |
-| Daily briefing | Ollama · local |
-| Coding | OpenRouter · cloud |
-| Research | OpenRouter · cloud |
+| General questions | Ollama · local (`llama3.2:3b`) |
+| Daily briefing | Ollama · local (`llama3.2:3b`) |
+| Coding | Anthropic · cloud |
+| Research | Anthropic · cloud |
 
 The per-conversation switch is AUTO / LOCAL ONLY / CLOUD. Privacy switches:
 - Label every cloud message (on). The transcript shows `CLOUD · SENT OFF DEVICE`.
@@ -526,7 +526,7 @@ X-GNOME-Autostart-enabled=true
 **Done when:** everything on the dashboard works offline with no AI and no Google.
 
 ### Phase 3: Assistant
-- [ ] `ai` crate: trait, OpenAI-compatible adapter (Ollama first), then Anthropic and Gemini
+- [ ] `ai` crate: trait, OpenAI-compatible adapter (Ollama first, via its `/v1` endpoint), then Anthropic (raw HTTP; there is no official Rust SDK), then Gemini
 - [ ] Tool calls wired to the `clock-core` actions, with UNDO
 - [ ] Assistant screen: conversations, transcript with route labels and cloud tag, routing switch
 - [ ] Settings → AI & Models: providers (keys in the keyring), routing table, privacy switches
@@ -558,6 +558,6 @@ X-GNOME-Autostart-enabled=true
 |---|---|
 | Idle ↔ dashboard transition | Cut or fade. Currently a cut; try a 200 ms fade and decide by feel. |
 | 12-hour time picker in Slint | Needed for alarms and reminders; the browser picker in the prototype doesn't exist in Slint. |
-| Default local model / first cloud provider | Prototype assumes `llama3.1:8b` on Ollama and OpenRouter for coding and research. |
+| Default cloud model | Local is `llama3.2:3b` in Docker; cloud is Anthropic first. Which Claude model coding and research use by default is still open. |
 | Google connection | GOA first (recommended); in-app OAuth for Tasks and Gmail. |
 | Which Tasks list syncs | The default list for now; maybe a picker later. |
