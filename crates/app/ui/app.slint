@@ -86,23 +86,25 @@ export component AppWindow inherits Window {
             // Header: tabs + theme toggle
             Rectangle {
                 height: 64px;
+                // Everything sits in one layout so each control only covers its own area.
                 HorizontalLayout {
                     padding-left: Theme.page-pad;
                     padding-right: Theme.page-pad;
                     spacing: 32px;
-                    alignment: start;
                     Label { text: "SMART CLOCK"; color: Theme.text; vertical-alignment: center; }
                     Rectangle { width: 32px; }
                     Tab { text: "DASHBOARD"; active: root.screen == Screen.dashboard; clicked => { root.screen = Screen.dashboard; } }
                     Tab { text: "ASSISTANT"; active: root.screen == Screen.assistant; clicked => { root.screen = Screen.assistant; } }
                     Tab { text: "SETTINGS";  active: root.screen == Screen.settings;  clicked => { root.screen = Screen.settings; } }
-                }
-                Tab {
-                    x: parent.width - self.width - Theme.page-pad;
-                    y: (parent.height - self.height) / 2;
-                    text: Theme.dark ? "LIGHT" : "DARK";
-                    active: false;
-                    clicked => { root.toggle-theme(); }
+                    Rectangle { horizontal-stretch: 1; }
+                    VerticalLayout {
+                        alignment: center;
+                        Tab {
+                            text: Theme.dark ? "LIGHT" : "DARK";
+                            active: false;
+                            clicked => { root.toggle-theme(); }
+                        }
+                    }
                 }
                 Rectangle { y: parent.height - 1px; height: Theme.hairline; background: Theme.line; }
             }
