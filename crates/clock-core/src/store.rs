@@ -5,7 +5,8 @@
 //! UTC instants use rusqlite's chrono encoding.
 
 use crate::model::{
-    local_to_utc, next_fire_local, Alarm, ChatMessage, Conversation, Reminder, Source, Timer,
+    local_to_utc, next_fire_local, Alarm, ChatMessage, Conversation, GoogleTaskUpdate, Reminder,
+    Source, Timer,
 };
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use rusqlite::{params, types::Type, Connection, OptionalExtension, Row};
@@ -74,6 +75,12 @@ const MIGRATIONS: &[&str] = &[
         created_utc     TEXT    NOT NULL
      );
      CREATE INDEX messages_by_conversation ON messages(conversation_id, id);",
+    // 4: keep Google task deletions until the next successful sync.
+    "CREATE TABLE google_task_tombstones (
+        task_id     TEXT PRIMARY KEY,
+        list_id     TEXT NOT NULL,
+        deleted_utc TEXT NOT NULL
+     );",
 ];
 
 const TIME_FMT: &str = "%H:%M";
@@ -241,6 +248,12 @@ impl Store {
              ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             params![key, value],
         )?;
+        Ok(())
+    }
+
+    pub fn delete_setting(&self, key: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM settings WHERE key = ?1", [key])?;
         Ok(())
     }
 
@@ -504,6 +517,17 @@ impl Store {
             .optional()?)
     }
 
+    pub fn reminder_by_google_task(&self, task_id: &str) -> Result<Option<Reminder>> {
+        Ok(self
+            .conn
+            .query_row(
+                &format!("SELECT {REMINDER_COLS} FROM reminders WHERE google_task_id = ?1"),
+                [task_id],
+                reminder_row,
+            )
+            .optional()?)
+    }
+
     /// Open first; then by due date (undated last), due time, and creation order.
     pub fn reminders(&self) -> Result<Vec<Reminder>> {
         let mut st = self.conn.prepare(&format!(
@@ -524,11 +548,130 @@ impl Store {
         Ok(())
     }
 
+    pub fn update_reminder(
+        &self,
+        id: i64,
+        text: &str,
+        due_date: Option<NaiveDate>,
+        done: bool,
+        now: DateTime<Utc>,
+    ) -> Result<()> {
+        self.conn.execute(
+            "UPDATE reminders
+             SET text = ?2, due_date = ?3, done = ?4, updated_utc = ?5
+             WHERE id = ?1 AND due_time IS NULL",
+            params![
+                id,
+                text,
+                due_date.map(|d| d.format(DATE_FMT).to_string()),
+                done,
+                now
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn set_google_task(
+        &self,
+        id: i64,
+        task_id: &str,
+        list_id: &str,
+        etag: Option<&str>,
+        updated: DateTime<Utc>,
+    ) -> Result<()> {
+        self.conn.execute(
+            "UPDATE reminders
+             SET source = 'google', google_task_id = ?2, google_list_id = ?3,
+                 google_etag = ?4, updated_utc = ?5
+             WHERE id = ?1 AND due_time IS NULL",
+            params![id, task_id, list_id, etag, updated],
+        )?;
+        Ok(())
+    }
+
+    pub fn update_google_reminder(&self, id: i64, update: GoogleTaskUpdate<'_>) -> Result<()> {
+        self.conn.execute(
+            "UPDATE reminders
+             SET text = ?2, due_date = ?3, done = ?4, source = 'google',
+                 google_task_id = ?5, google_list_id = ?6, google_etag = ?7,
+                 updated_utc = ?8
+             WHERE id = ?1 AND due_time IS NULL",
+            params![
+                id,
+                update.text,
+                update.due_date.map(|d| d.format(DATE_FMT).to_string()),
+                update.done,
+                update.task_id,
+                update.list_id,
+                update.etag,
+                update.updated_utc
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn add_google_reminder(&self, update: GoogleTaskUpdate<'_>) -> Result<Reminder> {
+        self.conn.execute(
+            "INSERT INTO reminders
+             (text, due_date, done, source, google_task_id, google_list_id, google_etag, updated_utc)
+             VALUES (?1, ?2, ?3, 'google', ?4, ?5, ?6, ?7)",
+            params![
+                update.text,
+                update.due_date.map(|d| d.format(DATE_FMT).to_string()),
+                update.done,
+                update.task_id,
+                update.list_id,
+                update.etag,
+                update.updated_utc
+            ],
+        )?;
+        Ok(self
+            .reminder(self.conn.last_insert_rowid())?
+            .expect("just inserted"))
+    }
+
     pub fn delete_reminder(&self, id: i64) -> Result<Option<Reminder>> {
         let r = self.reminder(id)?;
+        if let Some(task_id) = r.as_ref().and_then(|r| r.google_task_id.as_deref()) {
+            let list_id = r
+                .as_ref()
+                .and_then(|r| r.google_list_id.as_deref())
+                .unwrap_or_default();
+            self.conn.execute(
+                "INSERT INTO google_task_tombstones (task_id, list_id, deleted_utc)
+                 VALUES (?1, ?2, ?3)
+                 ON CONFLICT(task_id) DO UPDATE SET list_id = excluded.list_id,
+                     deleted_utc = excluded.deleted_utc",
+                params![task_id, list_id, Utc::now()],
+            )?;
+        }
         self.conn
             .execute("DELETE FROM reminders WHERE id = ?1", [id])?;
         Ok(r)
+    }
+
+    pub fn delete_google_reminder(&self, id: i64) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM reminders WHERE id = ?1", [id])?;
+        Ok(())
+    }
+
+    pub fn google_task_tombstones(&self) -> Result<Vec<(String, String)>> {
+        let mut st = self
+            .conn
+            .prepare("SELECT task_id, list_id FROM google_task_tombstones ORDER BY deleted_utc")?;
+        let rows = st
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+            .collect::<rusqlite::Result<_>>()?;
+        Ok(rows)
+    }
+
+    pub fn clear_google_task_tombstone(&self, task_id: &str) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM google_task_tombstones WHERE task_id = ?1",
+            [task_id],
+        )?;
+        Ok(())
     }
 
     pub fn restore_reminder(&self, r: &Reminder) -> Result<()> {
@@ -550,6 +693,9 @@ impl Store {
                 r.updated_utc
             ],
         )?;
+        if let Some(task_id) = r.google_task_id.as_deref() {
+            self.clear_google_task_tombstone(task_id)?;
+        }
         Ok(())
     }
 
@@ -802,6 +948,34 @@ mod tests {
         let gone = s.delete_reminder(tomorrow.id).unwrap().unwrap();
         s.restore_reminder(&gone).unwrap();
         assert_eq!(s.reminder(tomorrow.id).unwrap(), Some(gone));
+    }
+
+    #[test]
+    fn google_task_deletions_survive_until_sync_and_undo_clears_them() {
+        let s = Store::open_in_memory().unwrap();
+        let task = s
+            .add_google_reminder(GoogleTaskUpdate {
+                text: "renew registration",
+                due_date: None,
+                done: false,
+                task_id: "remote-task",
+                list_id: "default-list",
+                etag: Some("etag"),
+                updated_utc: utc(12, 0, 0),
+            })
+            .unwrap();
+
+        let deleted = s.delete_reminder(task.id).unwrap().unwrap();
+        assert_eq!(
+            s.google_task_tombstones().unwrap(),
+            [("remote-task".into(), "default-list".into())]
+        );
+        s.restore_reminder(&deleted).unwrap();
+        assert!(s.google_task_tombstones().unwrap().is_empty());
+
+        s.delete_reminder(task.id).unwrap();
+        s.clear_google_task_tombstone("remote-task").unwrap();
+        assert!(s.google_task_tombstones().unwrap().is_empty());
     }
 
     #[test]

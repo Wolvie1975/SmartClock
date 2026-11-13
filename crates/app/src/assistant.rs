@@ -547,6 +547,7 @@ impl AssistantController {
 
         // 1. Clock commands: the offline parser, no AI.
         if let Some(cmd) = command::parse(&text, local) {
+            let sync_google = matches!(&cmd, command::Command::AddReminder { time: None, .. });
             let out = tools::apply_command(&self.store, cmd, utc, local);
             let (summary, undo) = match out.applied {
                 Some(a) => (a.summary, a.undo),
@@ -565,6 +566,9 @@ impl AssistantController {
             *self.undos.borrow_mut() = undo.into_iter().collect();
             self.undo_target.set(Some(Target::Chat { conv, row }));
             self.dash.refresh(ui);
+            if sync_google {
+                self.dash.request_google_sync();
+            }
             self.reload_conversations(ui);
             return;
         }
@@ -623,6 +627,7 @@ impl AssistantController {
             }
             _ => {}
         }
+        self.dash.request_google_sync();
         self.dash.refresh(ui);
     }
 
@@ -648,8 +653,9 @@ impl AssistantController {
         }
         while let Ok((id, ev)) = self.rx.try_recv() {
             if let Event::Status(ok) = ev {
-                ui.global::<Chat>()
-                    .set_local_status(if ok { "READY" } else { "UNREACHABLE" }.into());
+                let status = if ok { "READY" } else { "UNREACHABLE" };
+                ui.global::<Chat>().set_local_status(status.into());
+                ui.set_ai_local_status(status.into());
                 continue;
             }
             let target = match self.job.borrow().as_ref() {
@@ -675,6 +681,7 @@ impl AssistantController {
                 }
                 Event::Tool { call, reply } => {
                     let (utc, local) = now();
+                    let sync_google = call.name == "add_reminder";
                     let weather = match call.name.as_str() {
                         "get_weather" | "list_today" => self.weather.summary(),
                         _ => None,
@@ -696,6 +703,9 @@ impl AssistantController {
                         let can_undo = !self.undos.borrow().is_empty();
                         self.show_actions(ui, target, &actions, can_undo);
                         self.dash.refresh(ui);
+                        if sync_google {
+                            self.dash.request_google_sync();
+                        }
                     }
                     let _ = reply.send(ToolReply {
                         result: out.result,

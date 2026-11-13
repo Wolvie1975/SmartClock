@@ -470,6 +470,8 @@ keyring.create_item(
 
 5. Request only the scopes ticked in Settings → Accounts. Changing them starts a new consent.
 
+In Smart Clock, enter the Desktop app's client ID in Settings → Accounts and select Tasks and/or Gmail before connecting. The app stores the refresh token in GNOME Keyring; Calendar remains a separate GNOME Online Accounts connection. Google sign-in and account sync require a configured OAuth client and were not part of offline test runs.
+
 ### 12.4 Reminders ↔ Google Tasks rules
 
 - The Tasks API stores **only a due date**. Any time is discarded and can't be read back.
@@ -536,11 +538,11 @@ The launcher template is `data/smart-clock.desktop.in`; the install script fills
 - [ ] Manual briefing playback (PLAY BRIEFING, "brief me")
 
 ### Phase 5: Google
-- [ ] Settings → Accounts: method choice, status states, permission checklist
-- [ ] Calendar through GOA (section 12.2): timeline markers and the briefing list
-- [ ] In-app OAuth with PKCE, refresh token in the keyring (section 12.3)
-- [ ] Tasks sync for untimed reminders, GOOGLE/LOCAL tags (section 12.4)
-- [ ] Gmail new-unread count (section 12.5)
+- [x] Settings → Accounts: client ID, service selection, and connection status
+- [x] Calendar through GOA (section 12.2): timeline markers and event list
+- [x] In-app OAuth with PKCE, refresh token in the keyring (section 12.3)
+- [x] Tasks sync for untimed reminders, GOOGLE/LOCAL tags (section 12.4)
+- [x] Gmail new-unread count (section 12.5)
 
 ### Phase 6: Background and packaging
 - [ ] Scheduler as a systemd user service with a D-Bus interface

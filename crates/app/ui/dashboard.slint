@@ -2,7 +2,7 @@ import { Theme } from "theme.slint";
 import { Label } from "widgets/label.slint";
 import { DayTimeline } from "widgets/timeline.slint";
 import { TextButton, Toggle, Check } from "widgets/controls.slint";
-import { Dash, TimerRow, AlarmRow, ReminderRow } from "state.slint";
+import { Dash, Google, TimerRow, AlarmRow, ReminderRow } from "state.slint";
 import { WeatherPanel } from "weather.slint";
 
 // ---------------------------------------------------------------------------
@@ -478,8 +478,27 @@ export component Dashboard inherits Rectangle {
                     vertical-stretch: 1;
                     Fact { key: "NEXT ALARM"; value: Dash.next-alarm; }
                     Fact { key: "OPEN REMINDERS"; value: Dash.open-reminders; }
-                    Fact { key: "CALENDAR TODAY"; value: "PHASE 5"; pending: true; }
-                    Fact { key: "NEW MAIL"; value: "PHASE 5"; pending: true; }
+                    Fact {
+                        key: "CALENDAR TODAY";
+                        value: Google.events.length == 0 ? "NONE" : Google.events.length + " EVENTS";
+                        pending: Google.calendar-status != "READY";
+                    }
+                    Fact {
+                        key: "NEW MAIL";
+                        value: Google.new-mail;
+                        pending: Google.new-mail == "NOT CONNECTED" || Google.new-mail == "MAIL UNAVAILABLE";
+                    }
+                    if Google.events.length > 0: Flickable {
+                        height: min(content.preferred-height, 220px);
+                        content-height: content.preferred-height;
+                        content := VerticalLayout {
+                            width: parent.width;
+                            for e in Google.events: Fact {
+                                key: e.when;
+                                value: e.title;
+                            }
+                        }
+                    }
                     Rectangle { vertical-stretch: 1; min-height: 16px; }
                     TextButton {
                         text: "PLAY BRIEFING";

@@ -1,0 +1,341 @@
+import { Theme } from "theme.slint";
+import { Label } from "widgets/label.slint";
+import { TextButton, Check } from "widgets/controls.slint";
+
+export component SettingsScreen inherits Rectangle {
+    in-out property <string> local-url: "http://127.0.0.1:11434";
+    in-out property <string> local-model: "llama3.2:3b";
+    in-out property <string> cloud-provider: "ANTHROPIC";
+    in-out property <string> cloud-model: "claude-opus-5-5";
+    in-out property <string> api-key: "";
+    in-out property <string> local-status: "READY";
+    in-out property <string> cloud-status: "NOT SET UP";
+    in-out property <string> google-client-id: "";
+    in-out property <string> google-status: "NOT CONNECTED";
+    in-out property <string> google-calendar-status: "NOT CONNECTED";
+    in-out property <bool> google-tasks: true;
+    in-out property <bool> google-mail: true;
+    in-out property <bool> google-busy: false;
+
+    callback save(string, string, string, string, string);
+    callback connect-google(string, bool, bool);
+    callback connect-calendar();
+    callback disconnect-google();
+
+    VerticalLayout {
+        padding-left: Theme.page-pad;
+        padding-right: Theme.page-pad;
+        padding-top: 32px;
+        padding-bottom: 32px;
+        spacing: 20px;
+
+        Label {
+            text: "AI & MODELS";
+            color: Theme.text;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        Rectangle {
+            border-width: 1px;
+            border-color: Theme.line;
+            background: Theme.panel;
+            border-radius: 8px;
+
+            VerticalLayout {
+                padding-left: 20px;
+                padding-right: 20px;
+                padding-top: 20px;
+                padding-bottom: 20px;
+                spacing: 16px;
+                Label {
+                    text: "LOCAL MODEL";
+                    color: Theme.muted;
+                }
+                HorizontalLayout {
+                    spacing: 12px;
+                    Label {
+                        width: 130px;
+                        text: "URL";
+                        color: Theme.muted;
+                    }
+                    Rectangle {
+                        min-height: 36px;
+                        background: Theme.bg;
+                        border-width: 1px;
+                        border-color: Theme.line;
+                        border-radius: 4px;
+                        TextInput {
+                            x: 8px;
+                            width: parent.width - 16px;
+                            vertical-alignment: center;
+                            text: root.local-url;
+                            edited => { root.local-url = self.text; }
+                            color: Theme.text;
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 12px;
+                    Label {
+                        width: 130px;
+                        text: "MODEL";
+                        color: Theme.muted;
+                    }
+                    Rectangle {
+                        min-height: 36px;
+                        background: Theme.bg;
+                        border-width: 1px;
+                        border-color: Theme.line;
+                        border-radius: 4px;
+                        TextInput {
+                            x: 8px;
+                            width: parent.width - 16px;
+                            vertical-alignment: center;
+                            text: root.local-model;
+                            edited => { root.local-model = self.text; }
+                            color: Theme.text;
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 12px;
+                    Label {
+                        width: 130px;
+                        text: "STATUS";
+                        color: Theme.muted;
+                    }
+                    Label {
+                        text: root.local-status;
+                        color: Theme.accent-text;
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            border-width: 1px;
+            border-color: Theme.line;
+            background: Theme.panel;
+            border-radius: 8px;
+
+            VerticalLayout {
+                padding-left: 20px;
+                padding-right: 20px;
+                padding-top: 20px;
+                padding-bottom: 20px;
+                spacing: 16px;
+                Label {
+                    text: "CLOUD MODEL";
+                    color: Theme.muted;
+                }
+                HorizontalLayout {
+                    spacing: 12px;
+                    Label {
+                        width: 130px;
+                        text: "PROVIDER";
+                        color: Theme.muted;
+                    }
+                    Rectangle {
+                        min-height: 36px;
+                        background: Theme.bg;
+                        border-width: 1px;
+                        border-color: Theme.line;
+                        border-radius: 4px;
+                        TextInput {
+                            x: 8px;
+                            width: parent.width - 16px;
+                            vertical-alignment: center;
+                            text: root.cloud-provider;
+                            edited => { root.cloud-provider = self.text; }
+                            color: Theme.text;
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 12px;
+                    Label {
+                        width: 130px;
+                        text: "MODEL";
+                        color: Theme.muted;
+                    }
+                    Rectangle {
+                        min-height: 36px;
+                        background: Theme.bg;
+                        border-width: 1px;
+                        border-color: Theme.line;
+                        border-radius: 4px;
+                        TextInput {
+                            x: 8px;
+                            width: parent.width - 16px;
+                            vertical-alignment: center;
+                            text: root.cloud-model;
+                            edited => { root.cloud-model = self.text; }
+                            color: Theme.text;
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 12px;
+                    Label {
+                        width: 130px;
+                        text: "API KEY";
+                        color: Theme.muted;
+                    }
+                    Rectangle {
+                        min-height: 36px;
+                        background: Theme.bg;
+                        border-width: 1px;
+                        border-color: Theme.line;
+                        border-radius: 4px;
+                        TextInput {
+                            x: 8px;
+                            width: parent.width - 16px;
+                            vertical-alignment: center;
+                            input-type: password;
+                            text: root.api-key;
+                            edited => { root.api-key = self.text; }
+                            color: Theme.text;
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 12px;
+                    Label {
+                        width: 130px;
+                        text: "STATUS";
+                        color: Theme.muted;
+                    }
+                    Label {
+                        text: root.cloud-status;
+                        color: Theme.accent-text;
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            border-width: 1px;
+            border-color: Theme.line;
+            background: Theme.panel;
+            border-radius: 8px;
+
+            VerticalLayout {
+                padding-left: 20px;
+                padding-right: 20px;
+                padding-top: 20px;
+                padding-bottom: 20px;
+                spacing: 16px;
+                Label {
+                    text: "GOOGLE ACCOUNTS";
+                    color: Theme.muted;
+                }
+                Label {
+                    text: "Calendar connects through GNOME Online Accounts. Tasks and Gmail use Google OAuth.";
+                    color: Theme.muted;
+                    wrap: word-wrap;
+                }
+                HorizontalLayout {
+                    spacing: 12px;
+                    Label {
+                        width: 130px;
+                        text: "DESKTOP CLIENT ID";
+                        color: Theme.muted;
+                    }
+                    Rectangle {
+                        min-height: 36px;
+                        background: Theme.bg;
+                        border-width: 1px;
+                        border-color: Theme.line;
+                        border-radius: 4px;
+                        TextInput {
+                            x: 8px;
+                            width: parent.width - 16px;
+                            vertical-alignment: center;
+                            text: root.google-client-id;
+                            edited => { root.google-client-id = self.text; }
+                            color: Theme.text;
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    Check {
+                        checked: root.google-tasks;
+                        toggled => { root.google-tasks = !root.google-tasks; }
+                    }
+                    Label { text: "SYNC UNTIMED REMINDERS WITH TASKS"; color: Theme.text; vertical-alignment: center; }
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    Check {
+                        checked: root.google-mail;
+                        toggled => { root.google-mail = !root.google-mail; }
+                    }
+                    Label { text: "COUNT NEW UNREAD MAIL IN BRIEFING"; color: Theme.text; vertical-alignment: center; }
+                }
+                HorizontalLayout {
+                    spacing: 16px;
+                    Label {
+                        text: "TASKS / GMAIL · " + root.google-status;
+                        color: Theme.accent-text;
+                        vertical-alignment: center;
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    TextButton {
+                        text: root.google-busy ? "CONNECTING…" : "CONNECT TASKS / GMAIL";
+                        primary: true;
+                        enabled: !root.google-busy && (root.google-tasks || root.google-mail);
+                        clicked => {
+                            root.connect-google(root.google-client-id, root.google-tasks, root.google-mail);
+                        }
+                    }
+                    TextButton {
+                        text: "DISCONNECT";
+                        enabled: !root.google-busy;
+                        clicked => { root.disconnect-google(); }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 16px;
+                    Label {
+                        text: "CALENDAR · " + root.google-calendar-status;
+                        color: Theme.accent-text;
+                        vertical-alignment: center;
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    TextButton {
+                        text: "CHECK GNOME ONLINE ACCOUNTS";
+                        enabled: !root.google-busy;
+                        clicked => { root.connect-calendar(); }
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            alignment: end;
+            spacing: 12px;
+            Rectangle {
+                width: 100px;
+                height: 40px;
+                background: Theme.accent-fill;
+                border-radius: 8px;
+                Label {
+                    text: "SAVE";
+                    color: Theme.on-accent;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    x: 0px;
+                    width: parent.width;
+                    height: parent.height;
+                }
+                TouchArea {
+                    clicked => {
+                        root.save(root.local-url, root.local-model, root.cloud-provider, root.cloud-model, root.api-key);
+                    }
+                }
+            }
+        }
+    }
+}

@@ -29,9 +29,24 @@ export struct ReminderRow {
 
 export struct Marker {
     pos: float,          // fraction of the day
-    kind: int,           // 0 alarm, 1 reminder, 2 timer
+    kind: int,           // 0 alarm, 1 reminder, 2 timer, 3 calendar event
     label: string,       // alarms: "7:00 AM" caption above the bar
     later: bool,         // alarms: next fires tomorrow (its time today has passed)
+}
+
+export struct CalendarEventRow {
+    title: string,
+    when: string,
+    position: float,
+    timed: bool,
+    birthday: bool,
+}
+
+export global Google {
+    in property <[CalendarEventRow]> events;
+    in property <string> tasks-status: "NOT CONNECTED";
+    in property <string> calendar-status: "NOT CONNECTED";
+    in property <string> new-mail: "NOT CONNECTED";
 }
 
 export global Dash {

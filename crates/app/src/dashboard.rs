@@ -1,10 +1,10 @@
 //! Dashboard glue: keeps the Slint `Dash` global in sync with the store and
 //! handles the command bar, row buttons and UNDO.
 
-use crate::{AlarmRow, AppWindow, Dash, Marker, ReminderRow, TimerRow};
+use crate::{AlarmRow, AppWindow, Dash, Google, Marker, ReminderRow, TimerRow};
 use chrono::{DateTime, Local, NaiveDateTime, Timelike, Utc};
 use clock_core::actions::{self, day_word, Undo};
-use clock_core::model::{countdown_label, days_label, duration_label, time12, Timer};
+use clock_core::model::{countdown_label, days_label, duration_label, time12, Source, Timer};
 use clock_core::{command, Store};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use std::cell::{Cell, RefCell};
@@ -12,6 +12,7 @@ use std::rc::Rc;
 
 type LocationHook = Box<dyn Fn(&str)>;
 type AskHook = Box<dyn Fn(&AppWindow, &str)>;
+type GoogleSyncHook = Box<dyn Fn()>;
 
 pub struct DashController {
     store: Rc<Store>,
@@ -24,6 +25,7 @@ pub struct DashController {
     last_minute: Cell<u32>,
     location_hook: RefCell<Option<LocationHook>>,
     ask_hook: RefCell<Option<AskHook>>,
+    google_sync_hook: RefCell<Option<GoogleSyncHook>>,
 }
 
 fn now() -> (DateTime<Utc>, NaiveDateTime) {
@@ -60,6 +62,7 @@ impl DashController {
             last_minute: Cell::new(u32::MAX),
             location_hook: RefCell::new(None),
             ask_hook: RefCell::new(None),
+            google_sync_hook: RefCell::new(None),
         });
 
         let dash = ui.global::<Dash>();
@@ -94,6 +97,7 @@ impl DashController {
         handler!(on_undo, |c, ui| {
             if let Some(u) = c.undo.borrow_mut().take() {
                 actions::undo(&c.store, &u)?;
+                c.request_google_sync();
                 c.show_result(&ui, "UNDONE", false, false);
             }
         });
@@ -129,12 +133,14 @@ impl DashController {
             let (utc, _) = now();
             if let Some(r) = c.store.reminder(id.into())? {
                 c.store.set_reminder_done(r.id, !r.done, utc)?;
+                c.request_google_sync();
             }
         });
         handler!(on_reminder_remove, |c, ui, id: i32| {
             if let Some(r) = c.store.delete_reminder(id.into())? {
                 let msg = format!("REMOVED · {}", r.text.to_uppercase());
                 c.offer_undo(&ui, &msg, Undo::RestoreReminder(r));
+                c.request_google_sync();
             }
         });
         handler!(on_play_briefing, |c, ui| {
@@ -153,6 +159,16 @@ impl DashController {
     /// Anything that isn't a clock command goes here (the assistant).
     pub fn set_ask_hook(&self, hook: impl Fn(&AppWindow, &str) + 'static) {
         *self.ask_hook.borrow_mut() = Some(Box::new(hook));
+    }
+
+    pub fn set_google_sync_hook(&self, hook: impl Fn() + 'static) {
+        *self.google_sync_hook.borrow_mut() = Some(Box::new(hook));
+    }
+
+    pub fn request_google_sync(&self) {
+        if let Some(hook) = self.google_sync_hook.borrow().as_ref() {
+            hook();
+        }
     }
 
     fn submit(&self, ui: &AppWindow, text: &str) -> anyhow::Result<()> {
@@ -188,7 +204,11 @@ impl DashController {
             }
             return Ok(());
         };
+        let sync_google = matches!(&cmd, command::Command::AddReminder { time: None, .. });
         let applied = actions::apply(&self.store, cmd, utc, local)?;
+        if sync_google {
+            self.request_google_sync();
+        }
         let summary = if applied.brief {
             "BRIEFING · VOICE ARRIVES IN PHASE 4".to_string()
         } else {
@@ -264,7 +284,12 @@ impl DashController {
                         _ => String::new(),
                     }
                     .into(),
-                    tag: if r.due_time.is_some() { "LOCAL" } else { "" }.into(),
+                    tag: match (r.source, r.due_time) {
+                        (Source::Google, None) => "GOOGLE",
+                        (_, Some(_)) => "LOCAL",
+                        _ => "",
+                    }
+                    .into(),
                     done: r.done,
                 })
                 .collect::<Vec<_>>(),
@@ -343,6 +368,16 @@ impl DashController {
                         ..Default::default()
                     });
                 }
+            }
+        }
+        for event in ui.global::<Google>().get_events().iter() {
+            if event.timed {
+                markers.push(Marker {
+                    pos: event.position,
+                    kind: 3,
+                    label: event.title,
+                    later: false,
+                });
             }
         }
         self.markers.set_vec(markers);

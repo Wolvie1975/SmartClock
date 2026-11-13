@@ -9,8 +9,10 @@ use std::{
 
 mod assistant;
 mod dashboard;
+mod google_controller;
 mod inhibit;
 mod ringing;
+mod secrets;
 mod sound;
 mod tools;
 mod weather;
@@ -18,6 +20,10 @@ mod weather;
 slint::include_modules!();
 
 const DEFAULT_IDLE_MINUTES: u64 = 5; // Settings → Idle screen
+const DEFAULT_OLLAMA_URL: &str = "http://127.0.0.1:11434";
+const DEFAULT_OLLAMA_MODEL: &str = "llama3.2:3b";
+const DEFAULT_CLOUD_PROVIDER: &str = "ANTHROPIC";
+const DEFAULT_CLOUD_MODEL: &str = "claude-opus-5-5";
 /// Burn-in drift cycle on the idle screen, one step per minute (px).
 const DRIFT: [(f32, f32); 6] = [
     (0., 0.),
@@ -97,6 +103,11 @@ fn main() -> anyhow::Result<()> {
         let a = activity.clone();
         move || a()
     });
+    let google = google_controller::GoogleController::install(&ui, store.clone())?;
+    dash.set_google_sync_hook({
+        let google = google.clone();
+        move || google.request_sync()
+    });
     let ringer = ringing::Ringer::install(&ui, store.clone(), dash.clone());
     let weather = weather::WeatherController::install(&ui, store.clone());
     dash.set_location_hook({
@@ -105,9 +116,107 @@ fn main() -> anyhow::Result<()> {
     });
     let assistant =
         assistant::AssistantController::install(&ui, store.clone(), weather.clone(), dash.clone())?;
+    let local_url = store
+        .get_setting("ollama_url")?
+        .unwrap_or_else(|| DEFAULT_OLLAMA_URL.to_string());
+    let local_model = store
+        .get_setting("ollama_model")?
+        .unwrap_or_else(|| DEFAULT_OLLAMA_MODEL.to_string());
+    let cloud_provider = store
+        .get_setting("cloud_provider")?
+        .unwrap_or_else(|| DEFAULT_CLOUD_PROVIDER.to_string());
+    let cloud_model = store
+        .get_setting("cloud_model")?
+        .unwrap_or_else(|| DEFAULT_CLOUD_MODEL.to_string());
+    let legacy_api_key = store.get_setting("cloud_api_key")?;
+    let keyring_api_key = secrets::get_blocking("cloud-api-key");
+    let api_key = match keyring_api_key {
+        Ok(Some(key)) => key,
+        keyring_result => {
+            if let Err(e) = keyring_result {
+                tracing::warn!("loading cloud API key from the system keyring failed: {e:#}");
+            }
+            match legacy_api_key.as_deref().filter(|key| !key.is_empty()) {
+                Some(key) => match secrets::set_blocking("cloud-api-key", Some(key)) {
+                    Ok(()) => key.to_owned(),
+                    Err(e) => {
+                        tracing::warn!(
+                            "migrating cloud API key to the system keyring failed: {e:#}"
+                        );
+                        String::new()
+                    }
+                },
+                None => String::new(),
+            }
+        }
+    };
+    if let Err(e) = store.delete_setting("cloud_api_key") {
+        tracing::warn!("removing legacy cloud API key from settings failed: {e}");
+    }
+    ui.set_ai_local_url(local_url.clone().into());
+    ui.set_ai_local_model(local_model.clone().into());
+    ui.set_ai_cloud_provider(cloud_provider.clone().into());
+    ui.set_ai_cloud_model(cloud_model.clone().into());
+    ui.set_ai_api_key(api_key.clone().into());
+    ui.set_ai_local_status(ui.global::<Chat>().get_local_status());
+    ui.set_ai_cloud_status(ui.global::<Chat>().get_cloud_status());
     dash.set_ask_hook({
         let a = assistant.clone();
         move |ui, q| a.ask(ui, q)
+    });
+    ui.on_save_ai_settings({
+        let weak = ui.as_weak();
+        let store = store.clone();
+        move |local_url: slint::SharedString,
+              local_model: slint::SharedString,
+              cloud_provider: slint::SharedString,
+              cloud_model: slint::SharedString,
+              api_key: slint::SharedString| {
+            let local_url = local_url.as_str().trim();
+            let local_model = local_model.as_str().trim();
+            let cloud_provider = cloud_provider.as_str().trim().to_uppercase();
+            let cloud_model = cloud_model.as_str().trim();
+            let api_key = api_key.as_str().trim();
+            if let Err(e) = store.set_setting("ollama_url", local_url) {
+                tracing::warn!("saving ollama_url failed: {e}");
+            }
+            if let Err(e) = store.set_setting("ollama_model", local_model) {
+                tracing::warn!("saving ollama_model failed: {e}");
+            }
+            if let Err(e) = store.set_setting("cloud_provider", &cloud_provider) {
+                tracing::warn!("saving cloud_provider failed: {e}");
+            }
+            if let Err(e) = store.set_setting("cloud_model", cloud_model) {
+                tracing::warn!("saving cloud_model failed: {e}");
+            }
+            let key_saved = match secrets::set_blocking(
+                "cloud-api-key",
+                (!api_key.is_empty()).then_some(api_key),
+            ) {
+                Ok(()) => true,
+                Err(e) => {
+                    tracing::warn!("saving cloud API key to the system keyring failed: {e:#}");
+                    false
+                }
+            };
+            if let Some(ui) = weak.upgrade() {
+                let chat = ui.global::<Chat>();
+                chat.set_local_model(local_model.into());
+                chat.set_local_address(local_url.into());
+                if key_saved && !cloud_provider.is_empty() && !api_key.is_empty() {
+                    chat.set_cloud_status("READY".into());
+                    ui.set_ai_cloud_status("READY".into());
+                } else {
+                    chat.set_cloud_status("NOT SET UP".into());
+                    ui.set_ai_cloud_status("NOT SET UP".into());
+                }
+                ui.set_ai_local_url(local_url.into());
+                ui.set_ai_local_model(local_model.into());
+                ui.set_ai_cloud_provider(cloud_provider.into());
+                ui.set_ai_cloud_model(cloud_model.into());
+                ui.set_ai_api_key(api_key.into());
+            }
+        }
     });
 
     {
@@ -155,6 +264,7 @@ fn main() -> anyhow::Result<()> {
             ui.set_week_label(format!("WEEK {}", now.iso_week().week()).into());
             ui.set_day_progress(now.num_seconds_from_midnight() as f32 / 86_400.0);
             dash.tick(&ui);
+            google.tick(&ui, &dash);
             ringer.tick(&ui);
             weather.tick(&ui);
             assistant.tick(&ui);

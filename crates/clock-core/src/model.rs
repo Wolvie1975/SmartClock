@@ -178,6 +178,16 @@ pub struct Reminder {
     pub updated_utc: DateTime<Utc>,
 }
 
+pub struct GoogleTaskUpdate<'a> {
+    pub text: &'a str,
+    pub due_date: Option<NaiveDate>,
+    pub done: bool,
+    pub task_id: &'a str,
+    pub list_id: &'a str,
+    pub etag: Option<&'a str>,
+    pub updated_utc: DateTime<Utc>,
+}
+
 impl Reminder {
     /// Timed reminders stay local; the Tasks API can't store a time of day (section 12.4).
     pub fn syncs_to_google(&self) -> bool {

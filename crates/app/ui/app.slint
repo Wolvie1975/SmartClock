@@ -3,10 +3,11 @@ import { Label } from "widgets/label.slint";
 import { IdleScreen } from "idle.slint";
 import { Dashboard } from "dashboard.slint";
 import { AssistantScreen } from "assistant.slint";
+import { SettingsScreen } from "settings.slint";
 import { TimerTakeover, AlarmTakeover } from "takeover.slint";
 
 export { Theme }
-export { Dash, TimerRow, AlarmRow, ReminderRow, Marker, Ring, AlarmPhase, Weather, HourCell, DayCell, Chat, ChatMsg, ConvRow } from "state.slint";
+export { Dash, TimerRow, AlarmRow, ReminderRow, Marker, Ring, AlarmPhase, Weather, HourCell, DayCell, Chat, ChatMsg, ConvRow, Google, CalendarEventRow } from "state.slint";
 
 export enum Screen { idle, dashboard, assistant, settings }
 export enum Overlay { none, timer, alarm }
@@ -59,9 +60,27 @@ export component AppWindow inherits Window {
     in property <length> drift-y: 0;
     in property <float> idle-brightness: 1.0;
 
+    in property <string> ai-local-url: "http://127.0.0.1:11434";
+    in property <string> ai-local-model: "llama3.2:3b";
+    in property <string> ai-cloud-provider: "ANTHROPIC";
+    in property <string> ai-cloud-model: "claude-opus-5-5";
+    in property <string> ai-api-key: "";
+    in property <string> ai-local-status: "READY";
+    in property <string> ai-cloud-status: "NOT SET UP";
+    in property <string> google-client-id: "";
+    in property <string> google-status: "NOT CONNECTED";
+    in property <string> google-calendar-status: "NOT CONNECTED";
+    in property <bool> google-tasks: true;
+    in property <bool> google-mail: true;
+    in property <bool> google-busy: false;
+
     callback activity();          // any pointer movement → reset idle timer
     callback toggle-theme();
     callback quit();
+    callback save-ai-settings(string, string, string, string, string);
+    callback connect-google(string, bool, bool);
+    callback connect-calendar();
+    callback disconnect-google();
 
     // CLOSE asks once before quitting, because alarms stop when the app closes.
     property <bool> confirm-close: false;
@@ -153,8 +172,28 @@ export component AppWindow inherits Window {
                 day-progress: root.day-progress;
             }
             if root.screen == Screen.assistant: AssistantScreen { }
-            if root.screen == Screen.settings: Rectangle {
-                Label { text: "SETTINGS — LATER PHASES"; }
+            if root.screen == Screen.settings: SettingsScreen {
+                local-url: root.ai-local-url;
+                local-model: root.ai-local-model;
+                cloud-provider: root.ai-cloud-provider;
+                cloud-model: root.ai-cloud-model;
+                api-key: root.ai-api-key;
+                local-status: root.ai-local-status;
+                cloud-status: root.ai-cloud-status;
+                google-client-id: root.google-client-id;
+                google-status: root.google-status;
+                google-calendar-status: root.google-calendar-status;
+                google-tasks: root.google-tasks;
+                google-mail: root.google-mail;
+                google-busy: root.google-busy;
+                save(local_url, local_model, cloud_provider, cloud_model, api_key) => {
+                    root.save-ai-settings(local_url, local_model, cloud_provider, cloud_model, api_key);
+                }
+                connect_google(client_id, tasks, mail) => {
+                    root.connect-google(client_id, tasks, mail);
+                }
+                connect_calendar => { root.connect-calendar(); }
+                disconnect_google => { root.disconnect-google(); }
             }
         }
     }
