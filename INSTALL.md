@@ -150,6 +150,7 @@ Coding and research questions go to a cloud model (Anthropic first, then Gemini)
 | Weather says OFFLINE or UNAVAILABLE | No network, or Open-Meteo is unreachable. It retries every 2 minutes and shows the last forecast meanwhile. |
 | Weather says SET A LOCATION | Type `location <your city>` in the command bar. |
 | Assistant can't reach the local model | `docker ps --filter name=ollama` should show it running, and `curl http://127.0.0.1:11434/api/tags` should list the model. |
+| `ollama serve` says *bind: address already in use* | The Docker container is already serving on that port, so nothing is wrong. Don't run `ollama serve` on the host; use `docker exec ollama ollama …`. If Fedora's own package is installed (`rpm -q ollama-base`), remove it with `sudo dnf remove ollama-base` so there's only one Ollama. |
 | An alarm didn't ring | Alarms only ring while the app is open (a background service comes in Phase 6). An alarm found more than 5 minutes late, for example after the laptop slept, is skipped. |
 
 ## 9. Uninstall
