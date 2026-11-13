@@ -61,6 +61,12 @@ fn main() -> anyhow::Result<()> {
         .ok();
 
     let ui = AppWindow::new()?;
+    // Matches the launcher's file name and StartupWMClass, so GNOME shows the
+    // right name and icon for the window. Needs the platform (created with the
+    // window) and must happen before the window is shown.
+    if let Err(e) = slint::set_xdg_app_id("smart-clock") {
+        tracing::warn!("couldn't set the app id: {e}");
+    }
     let theme = ui.global::<Theme>();
     theme.set_dark(store.get_setting("theme")?.as_deref() != Some("light"));
     if store.get_setting("start_on")?.as_deref() == Some("idle") {

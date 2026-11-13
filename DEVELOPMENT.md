@@ -492,21 +492,12 @@ keyring.create_item(
 |---|---|
 | Alarms keep working when the window is closed | Phase 6: move the scheduler from `clock-core` into a small **systemd user service** (`smart-clock-scheduler.service`). The UI talks to it over D-Bus (`zbus` interface). Until then, closing the window stops alarms; show that in Settings → Startup. |
 | Suspend / resume | Listen for logind `PrepareForSleep(bool)` on the system bus. On resume, recompute `next_fire_utc` and show missed alarms and reminders ("Catch up after sleep"). |
-| Open at login | Write `~/.config/autostart/smart-clock.desktop` when the setting is on, and delete it when off. |
+| App menu | `scripts/install-local.sh` installs a release build, the launcher (`data/smart-clock.desktop.in`) and the icon (`data/icons/smart-clock.svg`) for the current user. The window's app id is `smart-clock` to match the launcher. |
+| Open at login | Not wanted for now: the clock is opened manually from the app menu. If it comes back, write `~/.config/autostart/smart-clock.desktop` when a setting is on. |
 | Open on | The Startup setting picks Dashboard or Idle. |
 | Tray icon | Optional only; GNOME needs the AppIndicator extension. |
 
-Example `data/smart-clock.desktop`:
-
-```ini
-[Desktop Entry]
-Type=Application
-Name=Smart Clock
-Exec=smart-clock
-Icon=smart-clock
-Categories=Utility;Clock;
-X-GNOME-Autostart-enabled=true
-```
+The launcher template is `data/smart-clock.desktop.in`; the install script fills in the binary path and adds an **Open in a Window** action.
 
 ---
 
@@ -554,7 +545,7 @@ X-GNOME-Autostart-enabled=true
 ### Phase 6: Background and packaging
 - [ ] Scheduler as a systemd user service with a D-Bus interface
 - [ ] logind resume handling and catch-up
-- [ ] Open at login (autostart `.desktop`)
+- [x] App-menu launcher and icon (`scripts/install-local.sh`); open at login is not wanted for now
 - [ ] RPM spec (`cargo-generate-rpm` or a hand-written `.spec`); Flatpak later (the sandbox complicates mic, keyring and autostart)
 
 ---

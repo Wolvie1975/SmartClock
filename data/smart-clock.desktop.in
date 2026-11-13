@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=Smart Clock
+Comment=Full-screen clock with alarms, timers, reminders, weather and an assistant
+Exec=@BIN@
+Icon=smart-clock
+Terminal=false
+Categories=Utility;Clock;
+Keywords=alarm;timer;reminder;weather;clock;
+StartupWMClass=smart-clock
+Actions=windowed;
+
+[Desktop Action windowed]
+Name=Open in a Window
+Exec=@BIN@ --windowed

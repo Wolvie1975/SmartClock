@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Smart Clock app icon: hairline dial on the dark theme background, accent hands. -->
+  <rect x="8" y="8" width="240" height="240" rx="40" fill="#0E0E0C"/>
+  <rect x="8.5" y="8.5" width="239" height="239" rx="39.5" fill="none" stroke="#2E2E29" stroke-width="1"/>
+  <circle cx="128" cy="128" r="84" fill="none" stroke="#EDEBE3" stroke-width="6"/>
+  <g stroke="#9C9A8F" stroke-width="6" stroke-linecap="round">
+    <line x1="128" y1="56" x2="128" y2="70"/>
+    <line x1="200" y1="128" x2="186" y2="128"/>
+    <line x1="128" y1="200" x2="128" y2="186"/>
+    <line x1="56" y1="128" x2="70" y2="128"/>
+  </g>
+  <g stroke="#C6F36B" stroke-linecap="round">
+    <line x1="128" y1="128" x2="128" y2="78" stroke-width="10"/>
+    <line x1="128" y1="128" x2="166" y2="146" stroke-width="10"/>
+  </g>
+  <circle cx="128" cy="128" r="9" fill="#C6F36B"/>
+</svg>

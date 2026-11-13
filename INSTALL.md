@@ -31,15 +31,31 @@ Open a new terminal afterwards, or run `source "$HOME/.cargo/env"`, so `cargo` i
 ## 3. Build and run
 
 ```bash
-git clone <repo-url> SmartClock
+git clone https://github.com/Wolvie1975/SmartClock.git
 cd SmartClock
-cargo build --release -p smart-clock
+git switch development
+```
 
-# Full screen (normal use)
-./target/release/smart-clock
+### 3.1 Add it to the app menu (recommended)
 
-# In a window (development)
-./target/release/smart-clock --windowed
+```bash
+scripts/install-local.sh
+```
+
+This builds a release copy and adds **Smart Clock** to the GNOME app menu with its icon. It does **not** start at login; you open it yourself. Run the same command again after pulling new code to update it.
+
+- Open it from the app menu (press Super and type "Smart Clock"). It opens full screen.
+- Right-click its icon for **Open in a Window**.
+- Quit with **Alt+F4**.
+- Remove it with `scripts/install-local.sh --uninstall`. That keeps your alarms, reminders and settings.
+
+It installs `~/.local/bin/smart-clock`, `~/.local/share/applications/smart-clock.desktop` and the icon in `~/.local/share/icons/hicolor/scalable/apps/`.
+
+### 3.2 Run from the source folder (development)
+
+```bash
+cargo run --release -p smart-clock                # full screen
+cargo run -p smart-clock -- --windowed            # in a window, debug build
 ```
 
 | Flag | What it does |
@@ -156,6 +172,7 @@ Coding and research questions go to a cloud model (Anthropic first, then Gemini)
 ## 9. Uninstall
 
 ```bash
+scripts/install-local.sh --uninstall      # remove the app from the menu
 rm -rf ~/.local/share/smart-clock         # the clock's data
 docker rm -f ollama                       # the Ollama container
 docker volume rm ollama                   # downloaded models
