@@ -1,6 +1,7 @@
 import { Theme } from "theme.slint";
 import { Label } from "widgets/label.slint";
 import { DayTimeline } from "widgets/timeline.slint";
+import { Dash } from "state.slint";
 
 // Screensaver: huge clock, one info strip, day timeline. No controls.
 export component IdleScreen inherits Rectangle {
@@ -75,7 +76,7 @@ export component IdleScreen inherits Rectangle {
             Rectangle { height: 20px; }
             Label { text: root.info-strip; color: Theme.text; height: 20px; }
             Rectangle { height: 28px; }
-            DayTimeline { progress: root.day-progress; }
+            DayTimeline { progress: root.day-progress; markers: Dash.markers; }
         }
     }
 }

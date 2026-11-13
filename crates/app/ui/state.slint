@@ -30,6 +30,8 @@ export struct ReminderRow {
 export struct Marker {
     pos: float,          // fraction of the day
     kind: int,           // 0 alarm, 1 reminder, 2 timer
+    label: string,       // alarms: "7:00 AM" caption above the bar
+    later: bool,         // alarms: next fires tomorrow (its time today has passed)
 }
 
 export global Dash {

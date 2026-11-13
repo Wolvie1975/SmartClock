@@ -308,15 +308,19 @@ impl DashController {
         // Timeline markers for today
         let today = local.date();
         let mut markers = Vec::new();
+        // Every enabled alarm due in the next 24 hours, at its time of day;
+        // ones whose time today has passed fire tomorrow and are drawn dimmer.
         for a in alarms.iter().filter(|a| a.enabled) {
             if let Some(n) = a
                 .next_fire_utc
                 .map(|n| n.with_timezone(&Local).naive_local())
             {
-                if n.date() == today {
+                if n >= local && n - local < chrono::Duration::hours(24) {
                     markers.push(Marker {
                         pos: day_fraction(n),
                         kind: 0,
+                        label: time12(n.time()).into(),
+                        later: n.date() != today,
                     });
                 }
             }
@@ -326,6 +330,7 @@ impl DashController {
                 markers.push(Marker {
                     pos: day_fraction(at),
                     kind: 1,
+                    ..Default::default()
                 });
             }
         }
@@ -335,6 +340,7 @@ impl DashController {
                     markers.push(Marker {
                         pos: day_fraction(end),
                         kind: 2,
+                        ..Default::default()
                     });
                 }
             }

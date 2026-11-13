@@ -3,16 +3,32 @@ import { Label } from "label.slint";
 import { Marker } from "../state.slint";
 
 // 24-hour day bar, 12 AM → 12 AM. `progress` is the fraction of the day elapsed (0..1).
-// Markers: alarms (accent, full height), reminders (text color), timer ends (muted).
+// Markers: alarms (accent stripe + time caption above the bar; dimmer when they
+// next fire tomorrow), reminders (text-color dot), timer ends (muted dot).
 export component DayTimeline inherits Rectangle {
     in property <float> progress;
     in property <[Marker]> markers;
-    height: 56px;
+    height: 76px;
 
     property <[string]> ticks: ["12A", "3A", "6A", "9A", "12P", "3P", "6P", "9P", "12A"];
+    property <length> caption-h: 20px;
+
+    // Alarm captions: "7:00 AM" centered over the marker, clamped to the bar's ends.
+    for m in root.markers: Text {
+        visible: m.kind == 0;
+        y: 0;
+        height: root.caption-h - 4px;
+        x: max(0px, min(root.width - self.width, root.width * m.pos - self.width / 2));
+        text: m.label;
+        font-family: Theme.mono;
+        font-size: Theme.label;
+        font-weight: 500;
+        color: m.later ? Theme.muted : Theme.accent-text;
+        vertical-alignment: center;
+    }
 
     bar := Rectangle {
-        y: 0;
+        y: root.caption-h;
         height: 20px;
         border-width: Theme.hairline;
         border-color: Theme.line;
@@ -35,7 +51,8 @@ export component DayTimeline inherits Rectangle {
             height: m.kind == 0 ? parent.height : 6px;
             y: m.kind == 0 ? 0 : (parent.height - self.height) / 2;
             border-radius: m.kind == 0 ? 0 : 3px;
-            background: m.kind == 0 ? Theme.accent-fill : m.kind == 1 ? Theme.text : Theme.muted;
+            background: m.kind == 0 ? (m.later ? Theme.muted : Theme.accent-fill)
+                : m.kind == 1 ? Theme.text : Theme.muted;
         }
         // now marker
         Rectangle {
@@ -46,7 +63,7 @@ export component DayTimeline inherits Rectangle {
     }
 
     for t[i] in root.ticks: Label {
-        y: bar.height + 10px;
+        y: bar.y + bar.height + 10px;
         x: i == 0 ? 0 : i == 8 ? root.width - self.width : root.width * i / 8 - self.width / 2;
         text: t;
     }
