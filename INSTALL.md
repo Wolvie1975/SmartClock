@@ -43,7 +43,7 @@ cargo build --release -p smart-clock
 ```
 
 | Flag | What it does |
-|---|---|
+| --- | --- |
 | `--windowed` | Run in a 1920×1080 window instead of full screen |
 | `--idle-minutes N` | Override the idle timeout for this run only; fractions work (`0.25` = 15 s) |
 
@@ -54,7 +54,7 @@ The first build takes several minutes. Later builds are quick.
 In the command bar at the bottom of the dashboard:
 
 | Type | To |
-|---|---|
+| --- | --- |
 | `location Austin, TX` | Set the weather location (use your own city; the state or country after the comma is optional) |
 
 The **LIGHT / DARK** button in the top-right corner switches the theme. The app remembers your choice.
@@ -107,7 +107,7 @@ docker exec -it ollama ollama run llama3.2:3b "Say hello in five words."
 This laptop runs models on the CPU (the integrated Intel graphics can't be used by Ollama), so smaller models are much faster.
 
 | Model | Memory | Speed on this laptop | Notes |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `llama3.2:3b` | ~2 GB | ~10–15 tokens/s | **Default.** Quick, supports tool calls |
 | `qwen3:4b` | ~2.6 GB | roughly half the speed | Smarter answers |
 | `llama3.1:8b` | ~5 GB | ~5 tokens/s | Only if you have the memory to spare |
@@ -136,7 +136,7 @@ Coding and research questions go to a cloud model (Anthropic first, then Gemini)
 ## 7. Where things are kept
 
 | What | Where |
-|---|---|
+| --- | --- |
 | Alarms, timers, reminders, settings, cached weather | `~/.local/share/smart-clock/clock.db` |
 | API keys and Google sign-in (later) | GNOME Keyring (open **Passwords and Keys** to see them) |
 | Ollama models | Docker volume `ollama` |
@@ -144,7 +144,7 @@ Coding and research questions go to a cloud model (Anthropic first, then Gemini)
 ## 8. Troubleshooting
 
 | Problem | Fix |
-|---|---|
+| --- | --- |
 | *libxkbcommon-x11.so could not be loaded* | `sudo dnf install -y libxkbcommon-x11` |
 | No alarm or timer sound | Check the output device and volume in GNOME Settings → Sound. The app plays through PipeWire's ALSA plugin, which Fedora installs by default (`pipewire-alsa`). |
 | Weather says OFFLINE or UNAVAILABLE | No network, or Open-Meteo is unreachable. It retries every 2 minutes and shows the last forecast meanwhile. |
