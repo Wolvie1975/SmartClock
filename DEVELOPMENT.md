@@ -23,7 +23,7 @@ A full-screen desktop clock and dashboard for a Fedora 45 laptop, written in **R
 |---|---|
 | Idle (screensaver) | Huge clock, one info strip, day timeline. No controls. Shown after the idle timeout. |
 | Dashboard | Clock, weather panel, day timeline, Timers · Alarms · Reminders · Briefing columns, command bar. Shown on mouse movement. |
-| Assistant | Conversation list, transcript with route labels, routing switch, routing/privacy side panel. |
+| Assistant | Conversation list, transcript with route labels, LOCAL / CLOUD switch, privacy side panel. |
 | Settings | 01 AI & Models · 02 Accounts · 03 Appearance · 04 Idle screen · 05 Voice & Mic · 06 Alarm sounds · 07 Startup |
 | Timer takeover | Last 10 seconds of a timer, then TIME'S UP. Overlays everything. |
 | Alarm ringing | Full-screen alarm with SNOOZE / DISMISS, snoozed and dismissed states. Overlays everything. |
@@ -392,18 +392,19 @@ pub trait Provider: Send + Sync {
 
 ### 10.3 Routing and privacy
 
-| Task | Default route |
+The assistant is there for the clock's job: time, alarms, timers, reminders, today's schedule, weather and the briefing. It is not a general coding or research assistant, so there is no routing by task type.
+
+| Input | Route |
 |---|---|
 | Clock commands | Built-in parser · no AI |
-| General questions | Ollama · local (`llama3.2:3b`) |
-| Daily briefing | Ollama · local (`llama3.2:3b`) |
-| Coding | Anthropic · cloud |
-| Research | Anthropic · cloud |
+| Everything else, including the daily briefing | Ollama · local (`llama3.2:3b`) |
+| A conversation you switch to CLOUD | Anthropic · cloud (Gemini later) |
 
-The per-conversation switch is AUTO / LOCAL ONLY / CLOUD. Privacy switches:
-- Label every cloud message (on). The transcript shows `CLOUD · SENT OFF DEVICE`.
-- Ask before sending to the cloud.
-- Fall back to local when offline (on).
+The per-conversation switch is **LOCAL / CLOUD**, and every conversation starts on LOCAL. Nothing leaves the laptop unless you flip a conversation to CLOUD yourself. The app never decides to send something to the cloud.
+
+- Every cloud message is labelled in the transcript: `CLOUD · SENT OFF DEVICE`.
+- If Ollama is unreachable, the assistant says so and offers to send that one message to the cloud. It never switches by itself.
+- The briefing always runs locally, whatever the switch says.
 
 **Gmail data never goes to a cloud model.** The briefing only uses the unread count anyway.
 
@@ -529,7 +530,7 @@ X-GNOME-Autostart-enabled=true
 - [ ] `ai` crate: trait, OpenAI-compatible adapter (Ollama first, via its `/v1` endpoint), then Anthropic (raw HTTP; there is no official Rust SDK), then Gemini
 - [ ] Tool calls wired to the `clock-core` actions, with UNDO
 - [ ] Assistant screen: conversations, transcript with route labels and cloud tag, routing switch
-- [ ] Settings → AI & Models: providers (keys in the keyring), routing table, privacy switches
+- [ ] Settings → AI & Models: local model (Ollama URL + model), cloud provider + model (key in the keyring)
 
 ### Phase 4: Voice
 - [ ] `cpal` capture and push to talk, with a level meter in Settings → Voice & Mic
@@ -558,6 +559,6 @@ X-GNOME-Autostart-enabled=true
 |---|---|
 | Idle ↔ dashboard transition | Cut or fade. Currently a cut; try a 200 ms fade and decide by feel. |
 | 12-hour time picker in Slint | Needed for alarms and reminders; the browser picker in the prototype doesn't exist in Slint. |
-| Default cloud model | Local is `llama3.2:3b` in Docker; cloud is Anthropic first. Which Claude model coding and research use by default is still open. |
+| Cloud model | Used only for conversations switched to CLOUD. Defaults to Claude Opus 5.5; changeable in Settings → AI & Models. |
 | Google connection | GOA first (recommended); in-app OAuth for Tasks and Gmail. |
 | Which Tasks list syncs | The default list for now; maybe a picker later. |
