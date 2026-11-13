@@ -7,10 +7,12 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod assistant;
 mod dashboard;
 mod inhibit;
 mod ringing;
 mod sound;
+mod tools;
 mod weather;
 
 slint::include_modules!();
@@ -95,6 +97,12 @@ fn main() -> anyhow::Result<()> {
         let w = weather.clone();
         move |q| w.set_location(q)
     });
+    let assistant =
+        assistant::AssistantController::install(&ui, store.clone(), weather.clone(), dash.clone())?;
+    dash.set_ask_hook({
+        let a = assistant.clone();
+        move |ui, q| a.ask(ui, q)
+    });
 
     {
         let weak = ui.as_weak();
@@ -136,6 +144,7 @@ fn main() -> anyhow::Result<()> {
             dash.tick(&ui);
             ringer.tick(&ui);
             weather.tick(&ui);
+            assistant.tick(&ui);
             if let Some(note) = weather.located.borrow_mut().take() {
                 dash.notify(&ui, &note);
             }

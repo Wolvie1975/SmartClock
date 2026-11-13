@@ -374,6 +374,46 @@ fn next_weekday(today: NaiveDate, wd: Weekday) -> NaiveDate {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers for structured input (assistant tool calls)
+
+/// A time of day as text ("5:00 PM", "17:00", "noon", "5") resolved with the same
+/// rules as typed commands. With `date`, uses that day's rules; without, the next
+/// time it comes round (which may be tomorrow).
+pub fn parse_clock_time(
+    text: &str,
+    date: Option<NaiveDate>,
+    now: NaiveDateTime,
+) -> Option<(NaiveDate, NaiveTime)> {
+    let (_, lower) = tokenize(text);
+    let (spec, used) = parse_time(&lower)?;
+    if used != lower.len() {
+        return None;
+    }
+    Some(match date {
+        Some(d) => (d, resolve_on(spec, d, now)),
+        None => {
+            let dt = resolve_next(spec, now);
+            (dt.date(), dt.time())
+        }
+    })
+}
+
+/// "2026-11-20", "today", "tomorrow", "friday" / "on friday".
+pub fn parse_date_text(text: &str, now: NaiveDateTime) -> Option<NaiveDate> {
+    let t = text.trim().to_lowercase();
+    if let Ok(d) = NaiveDate::parse_from_str(&t, "%Y-%m-%d") {
+        return Some(d);
+    }
+    match t.as_str() {
+        "today" | "tonight" => Some(now.date()),
+        "tomorrow" => Some(now.date() + chrono::Duration::days(1)),
+        other => {
+            weekday(other.trim_start_matches("on ").trim()).map(|w| next_weekday(now.date(), w))
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Reminders
 
 #[derive(Default)]
@@ -899,6 +939,33 @@ mod tests {
         assert_eq!(p("brief me"), Some(Command::Brief));
         assert_eq!(p("Brief me."), Some(Command::Brief));
         assert_eq!(p("play briefing"), Some(Command::Brief));
+    }
+
+    #[test]
+    fn structured_helpers() {
+        let now = at(10, 30);
+        assert_eq!(
+            parse_clock_time("5:00 PM", None, now),
+            Some((day(13), hm(17, 0)))
+        );
+        assert_eq!(
+            parse_clock_time("9am", None, now),
+            Some((day(14), hm(9, 0)))
+        );
+        assert_eq!(parse_clock_time("5", None, now), Some((day(13), hm(17, 0))));
+        assert_eq!(
+            parse_clock_time("3", Some(day(14)), now),
+            Some((day(14), hm(15, 0)))
+        );
+        assert_eq!(
+            parse_clock_time("noon", None, now),
+            Some((day(13), hm(12, 0)))
+        );
+        assert_eq!(parse_clock_time("5 to go", None, now), None);
+        assert_eq!(parse_date_text("2026-11-20", now), Some(day(20)));
+        assert_eq!(parse_date_text("Tomorrow", now), Some(day(14)));
+        assert_eq!(parse_date_text("on monday", now), Some(day(16)));
+        assert_eq!(parse_date_text("someday", now), None);
     }
 
     #[test]

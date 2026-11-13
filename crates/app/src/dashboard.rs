@@ -11,6 +11,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 type LocationHook = Box<dyn Fn(&str)>;
+type AskHook = Box<dyn Fn(&AppWindow, &str)>;
 
 pub struct DashController {
     store: Rc<Store>,
@@ -22,6 +23,7 @@ pub struct DashController {
     info_strip: RefCell<String>,
     last_minute: Cell<u32>,
     location_hook: RefCell<Option<LocationHook>>,
+    ask_hook: RefCell<Option<AskHook>>,
 }
 
 fn now() -> (DateTime<Utc>, NaiveDateTime) {
@@ -57,6 +59,7 @@ impl DashController {
             info_strip: RefCell::new(String::new()),
             last_minute: Cell::new(u32::MAX),
             location_hook: RefCell::new(None),
+            ask_hook: RefCell::new(None),
         });
 
         let dash = ui.global::<Dash>();
@@ -147,6 +150,11 @@ impl DashController {
         *self.location_hook.borrow_mut() = Some(Box::new(hook));
     }
 
+    /// Anything that isn't a clock command goes here (the assistant).
+    pub fn set_ask_hook(&self, hook: impl Fn(&AppWindow, &str) + 'static) {
+        *self.ask_hook.borrow_mut() = Some(Box::new(hook));
+    }
+
     fn submit(&self, ui: &AppWindow, text: &str) -> anyhow::Result<()> {
         let (utc, local) = now();
         let trimmed = text.trim();
@@ -167,12 +175,17 @@ impl DashController {
             return Ok(());
         }
         let Some(cmd) = command::parse(text, local) else {
-            self.show_result(
-                ui,
-                "NOT A CLOCK COMMAND · ASSISTANT ARRIVES IN PHASE 3",
-                false,
-                false,
-            );
+            if trimmed.is_empty() {
+                return Ok(());
+            }
+            match self.ask_hook.borrow().as_ref() {
+                Some(ask) => {
+                    self.show_result(ui, "", false, false);
+                    ui.global::<Dash>().set_command(SharedString::new());
+                    ask(ui, trimmed);
+                }
+                None => self.show_result(ui, "NOT A CLOCK COMMAND", false, false),
+            }
             return Ok(());
         };
         let applied = actions::apply(&self.store, cmd, utc, local)?;

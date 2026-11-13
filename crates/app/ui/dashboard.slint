@@ -211,6 +211,60 @@ component Fact inherits Rectangle {
 }
 
 // ---------------------------------------------------------------------------
+// Assistant answer card
+
+component AnswerCard inherits Rectangle {
+    background: Theme.panel;
+    border-width: Theme.hairline;
+    border-color: Theme.line;
+    border-radius: Theme.radius;
+    max-height: 300px;
+    clip: true;
+
+    VerticalLayout {
+        padding: 18px;
+        padding-top: 10px;
+        spacing: 10px;
+
+        HorizontalLayout {
+            spacing: 16px;
+            Label { text: Dash.answer-route; color: Theme.accent-text; vertical-alignment: center; }
+            Label {
+                text: Dash.answer-question;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if Dash.answer-busy: Label { text: "THINKING…"; vertical-alignment: center; }
+            if Dash.answer-can-undo: Centered {
+                TextButton {
+                    text: "UNDO";
+                    clicked => { Dash.answer-undo(); }
+                }
+            }
+            Centered {
+                TextButton {
+                    text: "×";
+                    clicked => { Dash.answer-close(); }
+                }
+            }
+        }
+        if Dash.answer-actions != "": Label {
+            text: Dash.answer-actions;
+            color: Theme.text;
+            wrap: word-wrap;
+        }
+        if Dash.answer-text != "": Text {
+            text: Dash.answer-text;
+            font-family: Theme.sans;
+            font-size: 19px;
+            color: Theme.text;
+            wrap: word-wrap;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Command bar
 
 component CommandBar inherits Rectangle {
@@ -257,7 +311,7 @@ component CommandBar inherits Rectangle {
                 visible: input.text == "";
                 x: 0;
                 height: parent.height;
-                text: "TIMER 20M · ALARM 7AM WEEKDAYS · REMIND ME AT 5 TO CHECK THE MAIL";
+                text: "TIMER 20M · ALARM 7AM WEEKDAYS · OR ASK ANYTHING";
                 font-family: Theme.mono;
                 font-size: 16px;
                 color: Theme.muted;
@@ -411,6 +465,7 @@ export component Dashboard inherits Rectangle {
             }
         }
 
+        if Dash.answer-visible: AnswerCard { }
         bar := CommandBar { }
     }
 }

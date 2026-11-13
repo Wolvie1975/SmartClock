@@ -58,6 +58,17 @@ export global Dash {
     callback reminder-toggle(int);
     callback reminder-remove(int);
     callback play-briefing();
+
+    // Assistant answer card (above the command bar)
+    in property <bool> answer-visible;
+    in property <bool> answer-busy;
+    in property <string> answer-question;
+    in property <string> answer-route;     // "LOCAL · LLAMA3.2:3B"
+    in property <string> answer-text;
+    in property <string> answer-actions;   // what it changed, e.g. "TIMER · PASTA · 5 MIN"
+    in property <bool> answer-can-undo;
+    callback answer-close();
+    callback answer-undo();
 }
 
 // Timer takeover + alarm ringing overlays.

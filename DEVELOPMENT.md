@@ -388,7 +388,13 @@ pub trait Provider: Send + Sync {
 
 ### 10.2 Tools the model can call
 
-`set_timer`, `add_alarm`, `add_reminder`, `list_today` (events + reminders), `get_weather`. Each call runs through the same code path as the parser and shows in the transcript with UNDO.
+`set_timer`, `cancel_timer`, `add_alarm`, `add_reminder`, `list_today` (time, timers, alarms, reminders, weather; calendar in Phase 5), `get_weather`. Each call runs through the same code path as the parser (`actions::apply`) and shows with UNDO.
+
+Lessons from testing with `llama3.2:3b` (see the ignored live tests in `ai` and `smart-clock`):
+- **Arguments arrive loosely** (`"minutes": "5"`), so tools accept numbers as strings, and times and dates as text resolved by the parser's rules.
+- **When every call in a round is a successful action, the app writes the confirmation** ("Alarm set for 6:30 AM on weekdays.") and skips the model's second round. That halves the wait and stops invented details.
+- **Lookups give exact facts** ("rings at 9:01 AM") so the model never has to do time arithmetic, and the system prompt tells it to state only facts from the tools.
+- **A tool call written as JSON text** is run if it names a real tool; otherwise the question is retried with no tools offered.
 
 ### 10.3 Routing and privacy
 
@@ -528,7 +534,7 @@ X-GNOME-Autostart-enabled=true
 
 ### Phase 3: Assistant
 - [ ] `ai` crate: trait, OpenAI-compatible adapter (Ollama first, via its `/v1` endpoint) ✓, then Anthropic (raw HTTP; there is no official Rust SDK), then Gemini
-- [ ] Tool calls wired to the `clock-core` actions, with UNDO
+- [x] Tool calls wired to the `clock-core` actions, with UNDO (command bar → answer card; full Assistant screen next)
 - [ ] Assistant screen: conversations, transcript with route labels and cloud tag, routing switch
 - [ ] Settings → AI & Models: local model (Ollama URL + model), cloud provider + model (key in the keyring)
 

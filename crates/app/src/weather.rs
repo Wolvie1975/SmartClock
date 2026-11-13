@@ -504,6 +504,51 @@ impl WeatherController {
         w.set_updated(format!("UPDATED {updated}").into());
     }
 
+    /// Plain-text forecast for the assistant (from the cached forecast).
+    pub fn summary(&self) -> Option<String> {
+        let place = self.store.get_setting("weather_place").ok().flatten()?;
+        let cached = self.store.get_setting("weather_cache").ok().flatten()?;
+        let f: Forecast = serde_json::from_str(&cached).ok()?;
+        let (temp_unit, wind) = self.units();
+        let v = build_view(&f, &wind);
+        let unit = if temp_unit == "celsius" { "C" } else { "F" };
+        let mut out = vec![
+            format!("Weather for {place} (temperatures in °{unit}):"),
+            format!(
+                "Now: {} {}, {}. Today {}.",
+                v.temp,
+                v.condition.to_lowercase(),
+                v.details.to_lowercase(),
+                v.hilo
+            ),
+        ];
+        let hours: Vec<String> = v
+            .hours
+            .iter()
+            .map(|h| {
+                let rain = if h.precip.is_empty() {
+                    String::new()
+                } else {
+                    format!(" ({} rain)", h.precip)
+                };
+                format!("{} {}{rain}", h.hour, h.temp)
+            })
+            .collect();
+        if !hours.is_empty() {
+            out.push(format!("Next hours: {}.", hours.join(", ")));
+        }
+        for d in &v.days {
+            out.push(format!(
+                "{}: {}, low {} high {}.",
+                d.day,
+                d.condition.to_lowercase(),
+                d.lo,
+                d.hi
+            ));
+        }
+        Some(out.join("\n"))
+    }
+
     /// Called from the UI tick.
     pub fn tick(&self, ui: &AppWindow) {
         while let Ok(msg) = self.rx.try_recv() {
