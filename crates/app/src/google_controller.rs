@@ -22,7 +22,7 @@ use tokio::{
     runtime::{Builder, Runtime},
     task::JoinHandle,
 };
-use zbus::{names::BusName, Connection, OwnedObjectPath, Proxy};
+use zbus::{Connection, Proxy};
 
 const REFRESH_INTERVAL: Duration = Duration::from_secs(5 * 60);
 const CLIENT_ID_SETTING: &str = "google_client_id";
@@ -779,20 +779,26 @@ async fn goa_calendar_today() -> Result<Vec<CalendarEvent>> {
     let connection = Connection::session()
         .await
         .context("connecting to the session D-Bus")?;
-    let manager = Proxy::new(
+    let object_manager = Proxy::new(
         &connection,
-        BusName::try_from("org.gnome.OnlineAccounts")?,
+        "org.gnome.OnlineAccounts",
         "/org/gnome/OnlineAccounts",
-        "org.gnome.OnlineAccounts.Manager",
+        "org.freedesktop.DBus.ObjectManager",
     )
     .await
-    .context("connecting to GNOME Online Accounts")?;
-    let accounts: Vec<OwnedObjectPath> = manager
-        .call("GetAccounts", &())
+    .context("connecting to the GNOME Online Accounts object manager")?;
+    let objects: zbus::fdo::ManagedObjects = object_manager
+        .call("GetManagedObjects", &())
         .await
         .context("listing GNOME Online Accounts")?;
     let mut token = None;
-    for path in accounts {
+    for (path, interfaces) in objects {
+        if !interfaces
+            .keys()
+            .any(|interface| interface.as_str() == "org.gnome.OnlineAccounts.Account")
+        {
+            continue;
+        }
         let account = Proxy::new(
             &connection,
             "org.gnome.OnlineAccounts",
@@ -805,26 +811,30 @@ async fn goa_calendar_today() -> Result<Vec<CalendarEvent>> {
             .get_property("ProviderType")
             .await
             .context("reading GNOME account provider")?;
-        let calendar_enabled: bool = account
-            .get_property("CalendarEnabled")
+        if !provider.eq_ignore_ascii_case("google") {
+            continue;
+        }
+        let calendar_disabled: bool = account
+            .get_property("CalendarDisabled")
             .await
             .context("reading GNOME calendar setting")?;
-        if provider.eq_ignore_ascii_case("google") && calendar_enabled {
-            let oauth = Proxy::new(
-                &connection,
-                "org.gnome.OnlineAccounts",
-                account.path(),
-                "org.gnome.OnlineAccounts.OAuth2Based",
-            )
-            .await
-            .context("connecting to Google account token service")?;
-            let (access_token, _expires_in): (String, u32) = oauth
-                .call("GetAccessToken", &())
-                .await
-                .context("requesting the GNOME Google access token")?;
-            token = Some(access_token);
-            break;
+        if calendar_disabled {
+            continue;
         }
+        let oauth = Proxy::new(
+            &connection,
+            "org.gnome.OnlineAccounts",
+            account.path(),
+            "org.gnome.OnlineAccounts.OAuth2Based",
+        )
+        .await
+        .context("connecting to Google account token service")?;
+        let (access_token, _expires_in): (String, i32) = oauth
+            .call("GetAccessToken", &())
+            .await
+            .context("requesting the GNOME Google access token")?;
+        token = Some(access_token);
+        break;
     }
     let token = token.context("No Google Calendar account is enabled in GNOME Online Accounts")?;
     let now = Local::now();
