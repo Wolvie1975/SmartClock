@@ -193,6 +193,15 @@ pub fn run(
             let Some(body) = text(&a["text"]) else {
                 return Outcome::error("the reminder needs text");
             };
+            // Guard against vague input ("and tomorrow?") becoming a reminder called "tomorrow".
+            let bare = body
+                .trim_matches(|c: char| !c.is_alphanumeric())
+                .to_lowercase();
+            if bare.chars().count() < 3 || parse_date_text(&bare, now_local).is_some() {
+                return Outcome::error(
+                    "the reminder has no real text; ask the user what they want to be reminded about",
+                );
+            }
             let date = match text(&a["date"]) {
                 Some(d) => match parse_date_text(&d, now_local) {
                     Some(d) => Some(d),
@@ -555,6 +564,16 @@ mod tests {
             )),
             "Reminder added: renew registration."
         );
+        assert!(run_t(
+            &s,
+            "add_reminder",
+            json!({"text": "tomorrow", "date": "tomorrow"})
+        )
+        .result
+        .starts_with("error"));
+        assert!(run_t(&s, "add_reminder", json!({"text": "Today?"}))
+            .result
+            .starts_with("error"));
         assert!(
             run_t(&s, "add_reminder", json!({"text": "x", "date": "someday"}))
                 .result

@@ -89,6 +89,8 @@ pub struct AssistantController {
     current: Cell<Option<i64>>,
     new_is_cloud: Cell<bool>,
     next_status: Cell<Instant>,
+    /// The answer card's exchange so far, so follow-ups work while it stays open.
+    card_history: RefCell<Vec<Message>>,
 }
 
 fn system_prompt() -> String {
@@ -98,7 +100,9 @@ fn system_prompt() -> String {
          reminders, today's schedule, the weather, and quick everyday questions.\n\
          It is {}.\n\
          Use the tools to set timers, alarms and reminders, and to look up today's details or the \
-         weather; never claim you did something without calling the tool. Give times with AM or PM.\n\
+         weather; never claim you did something without calling the tool. Only set a timer, alarm \
+         or reminder when the user clearly asks for one; if a request is unclear, ask a short \
+         question instead. Give times with AM or PM.\n\
          Only state facts the tools gave you. Don't work out times or dates yourself, and don't \
          describe buttons or features you weren't told about.\n\
          Reply in one to three short sentences of plain text, with no markdown or lists.",
@@ -168,6 +172,7 @@ impl AssistantController {
             current: Cell::new(None),
             new_is_cloud: Cell::new(false),
             next_status: Cell::new(Instant::now()),
+            card_history: RefCell::new(Vec::new()),
         });
 
         let chat = ui.global::<Chat>();
@@ -359,11 +364,17 @@ impl AssistantController {
         d.set_answer_text("".into());
         d.set_answer_actions("".into());
         d.set_answer_can_undo(false);
-        self.start(
-            ui,
-            Target::Card,
-            vec![Message::system(system_prompt()), Message::user(question)],
-        );
+        // Follow-ups: include the card's earlier exchange while it stays open.
+        let mut messages = vec![Message::system(system_prompt())];
+        {
+            let mut history = self.card_history.borrow_mut();
+            let skip = history.len().saturating_sub(HISTORY - 1);
+            history.drain(..skip);
+            messages.extend(history.iter().cloned());
+            history.push(Message::user(question));
+        }
+        messages.push(Message::user(question));
+        self.start(ui, Target::Card, messages);
         d.set_answer_busy(true); // `start` stopped any earlier run, which clears this
     }
 
@@ -374,6 +385,7 @@ impl AssistantController {
         ) {
             self.stop(ui);
         }
+        self.card_history.borrow_mut().clear();
         ui.global::<Dash>().set_answer_visible(false);
     }
 
@@ -702,6 +714,14 @@ impl AssistantController {
                             if text.is_empty() && job.actions.is_empty() {
                                 d.set_answer_text("(no reply)".into());
                             }
+                            let said = if text.is_empty() {
+                                job.actions.join(". ")
+                            } else {
+                                text
+                            };
+                            self.card_history
+                                .borrow_mut()
+                                .push(Message::assistant(said, vec![]));
                         }
                         Target::Chat { conv, row } => {
                             let text = if text.is_empty() && job.actions.is_empty() {
@@ -973,5 +993,68 @@ mod tests {
                 .map(|a| (a.time_local, a.days))
                 .collect::<Vec<_>>()
         );
+    }
+
+    /// "and tomorrow?" after a weather question must not create anything.
+    /// `cargo test -p smart-clock live_follow_up -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn live_follow_up() {
+        let store = Store::open_in_memory().unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let provider = OpenAiCompatible::ollama(DEFAULT_URL).unwrap();
+        let weather = "Weather for Testville (temperatures in °F):\nNow: 64° partly cloudy.\n\
+                       Today (Friday): partly cloudy, low 48° high 66°.\nTomorrow (Saturday): rain, low 45° high 58°.";
+        for _ in 0..3 {
+            let messages = vec![
+                Message::system(system_prompt()),
+                Message::user("what's the weather this afternoon?"),
+                Message::assistant(
+                    "It's 64° and partly cloudy, with a high of 66° today.",
+                    vec![],
+                ),
+                Message::user("and tomorrow?"),
+            ];
+            let (tx, rx) = mpsc::channel();
+            let (mut text, mut made) = (String::new(), Vec::new());
+            std::thread::scope(|s| {
+                s.spawn(|| {
+                    rt.block_on(async {
+                        let _ = run_turn(&provider, DEFAULT_MODEL, messages, 1, &tx).await;
+                        let _ = tx.send((1, Event::Done));
+                    })
+                });
+                while let Ok((_, ev)) = rx.recv() {
+                    match ev {
+                        Event::Text(t) => text.push_str(&t),
+                        Event::Reset => text.clear(),
+                        Event::Tool { call, reply } => {
+                            let now = Utc::now();
+                            let w = Some(weather.to_string());
+                            let out = tools::run(
+                                &store,
+                                w,
+                                &call,
+                                now,
+                                now.with_timezone(&Local).naive_local(),
+                            );
+                            println!("  tool {} {} -> {}", call.name, call.args, out.result);
+                            if let Some(a) = out.applied {
+                                made.push(a.summary);
+                            }
+                            let _ = reply.send(ToolReply {
+                                result: out.result,
+                                say: out.say,
+                            });
+                        }
+                        Event::Done | Event::Error(_) => break,
+                        Event::Status(_) => {}
+                    }
+                }
+            });
+            println!("A: {}", text.trim());
+            assert!(made.is_empty(), "created {made:?}");
+        }
+        assert!(store.reminders().unwrap().is_empty());
     }
 }

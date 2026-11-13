@@ -539,10 +539,17 @@ impl WeatherController {
         if !hours.is_empty() {
             out.push(format!("Next hours: {}.", hours.join(", ")));
         }
-        for d in &v.days {
+        // Spell out which day is which; "SAT" alone confuses small models.
+        let today = Local::now().date_naive();
+        for (i, d) in v.days.iter().enumerate() {
+            let date = today + chrono::Duration::days(i as i64);
+            let name = match i {
+                0 => format!("Today ({})", date.format("%A")),
+                1 => format!("Tomorrow ({})", date.format("%A")),
+                _ => date.format("%A").to_string(),
+            };
             out.push(format!(
-                "{}: {}, low {} high {}.",
-                d.day,
+                "{name}: {}, low {} high {}.",
                 d.condition.to_lowercase(),
                 d.lo,
                 d.hi
