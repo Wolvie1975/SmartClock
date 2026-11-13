@@ -18,6 +18,8 @@ use std::rc::Rc;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+/// Days in the forecast list: today and tomorrow (keeps the panel within its area).
+const FORECAST_DAYS: usize = 2;
 const REFRESH: Duration = Duration::from_secs(15 * 60);
 const RETRY: Duration = Duration::from_secs(2 * 60);
 const USER_AGENT: &str = concat!("smart-clock/", env!("CARGO_PKG_VERSION"));
@@ -254,8 +256,8 @@ pub fn build_view(f: &Forecast, wind_unit: &str) -> View {
         })
         .collect();
 
-    // Five days with range bars scaled to the week's min/max.
-    let n = f.daily.time.len().min(5);
+    // Today and tomorrow, with range bars scaled across both days.
+    let n = f.daily.time.len().min(FORECAST_DAYS);
     let lows: Vec<Option<f64>> = (0..n)
         .map(|i| f.daily.temperature_2m_min.get(i).copied().flatten())
         .collect();
@@ -342,7 +344,7 @@ fn fetch_forecast(lat: f64, lon: f64, temp_unit: &str, wind_unit: &str) -> anyho
             ("temperature_unit", temp_unit.into()),
             ("wind_speed_unit", wind_unit.into()),
             ("timezone", "auto".into()),
-            ("forecast_days", "5".into()),
+            ("forecast_days", FORECAST_DAYS.to_string()),
         ])
         .send()?
         .error_for_status()?

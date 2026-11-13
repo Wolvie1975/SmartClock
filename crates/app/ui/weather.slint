@@ -2,7 +2,7 @@ import { Theme } from "theme.slint";
 import { Label } from "widgets/label.slint";
 import { Weather } from "state.slint";
 
-// Now · next 8 hours · 5-day range bars.
+// Now · next 8 hours · today and tomorrow.
 export component WeatherPanel inherits Rectangle {
     border-width: Theme.hairline;
     border-color: Theme.line;
@@ -58,7 +58,7 @@ export component WeatherPanel inherits Rectangle {
             }
         }
 
-        // Five days
+        // Today and tomorrow
         Rectangle { height: Theme.hairline; background: Theme.line; }
         VerticalLayout {
             spacing: 2px;

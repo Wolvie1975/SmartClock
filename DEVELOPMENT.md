@@ -22,7 +22,7 @@ A full-screen desktop clock and dashboard for a Fedora 45 laptop, written in **R
 | Screen | Purpose |
 |---|---|
 | Idle (screensaver) | Huge clock, one info strip, day timeline. No controls. Shown after the idle timeout. |
-| Dashboard | Clock, weather panel, day timeline, Timers · Alarms · Reminders · Briefing columns, command bar. Shown on mouse movement. |
+| Dashboard | Clock, weather panel (now, next 8 hours, today and tomorrow), day timeline, Timers · Alarms · Reminders · Briefing columns, command bar. Shown on mouse movement. |
 | Assistant | Conversation list, transcript with route labels, LOCAL / CLOUD switch, privacy side panel. |
 | Settings | 01 AI & Models · 02 Accounts · 03 Appearance · 04 Idle screen · 05 Voice & Mic · 06 Alarm sounds · 07 Startup |
 | Timer takeover | Last 10 seconds of a timer, then TIME'S UP. Overlays everything. |
@@ -528,7 +528,7 @@ X-GNOME-Autostart-enabled=true
 - [x] Dashboard: four columns, command bar, day timeline markers
 - [x] Timer takeover overlay and alarm ringing overlay (section 7), with sounds through `cpal` (synthesized chime/beeps for now)
 - [x] Snooze, auto-stop and volume ramp (settings keys `snooze_min` 9, `autostop_min` 10, `ramp` true, `volume` 80; the Settings screen comes later)
-- [x] Weather panel from Open-Meteo: now, 8-hour strip, 5-day range bars (°F / mph; set the place with `location <city>` in the command bar)
+- [x] Weather panel from Open-Meteo: now, 8-hour strip, today and tomorrow with range bars (°F / mph; set the place with `location <city>` in the command bar)
 
 **Done when:** everything on the dashboard works offline with no AI and no Google.
 
