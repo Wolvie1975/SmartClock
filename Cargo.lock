@@ -725,7 +725,6 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "rusqlite",
- "serde",
  "thiserror 2.0.21",
  "tracing",
 ]
@@ -3819,6 +3818,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4edff0039f148731aee2fd80f76dbfeb12d204ab3d1c544838d34e02151049b"
 dependencies = [
  "bitflags 2.13.2",
+ "chrono",
  "fallible-iterator",
  "fallible-streaming-iterator",
  "hashlink",

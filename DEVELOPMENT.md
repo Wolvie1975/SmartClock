@@ -513,7 +513,7 @@ X-GNOME-Autostart-enabled=true
 **Done when:** the clock runs full screen, goes idle after the timeout, and wakes on mouse movement.
 
 ### Phase 2: Timers, alarms, reminders (local)
-- [ ] SQLite schema and repository layer in `clock-core` (section 8)
+- [x] SQLite schema and repository layer in `clock-core` (section 8); `actions::apply` + UNDO shared by every input path
 - [x] Command parser with tests (section 9)
 - [ ] Dashboard: four columns, command bar, day timeline markers
 - [ ] Timer takeover overlay and alarm ringing overlay (section 7), with sounds through `cpal`
