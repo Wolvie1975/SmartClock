@@ -16,8 +16,9 @@ export component SettingsScreen inherits Rectangle {
     in-out property <bool> google-tasks: true;
     in-out property <bool> google-mail: true;
     in-out property <bool> google-busy: false;
+    in-out property <string> save-status: "";
 
-    callback save(string, string, string, string, string);
+    callback save(string, string, string, string, string, string, bool, bool);
     callback connect-google(string, bool, bool);
     callback connect-calendar();
     callback disconnect-google();
@@ -70,7 +71,10 @@ export component SettingsScreen inherits Rectangle {
                             width: parent.width - 16px;
                             vertical-alignment: center;
                             text: root.local-url;
-                            edited => { root.local-url = self.text; }
+                            edited => {
+                                root.local-url = self.text;
+                                root.save-status = "UNSAVED CHANGES";
+                            }
                             color: Theme.text;
                         }
                     }
@@ -93,7 +97,10 @@ export component SettingsScreen inherits Rectangle {
                             width: parent.width - 16px;
                             vertical-alignment: center;
                             text: root.local-model;
-                            edited => { root.local-model = self.text; }
+                            edited => {
+                                root.local-model = self.text;
+                                root.save-status = "UNSAVED CHANGES";
+                            }
                             color: Theme.text;
                         }
                     }
@@ -147,7 +154,10 @@ export component SettingsScreen inherits Rectangle {
                             width: parent.width - 16px;
                             vertical-alignment: center;
                             text: root.cloud-provider;
-                            edited => { root.cloud-provider = self.text; }
+                            edited => {
+                                root.cloud-provider = self.text;
+                                root.save-status = "UNSAVED CHANGES";
+                            }
                             color: Theme.text;
                         }
                     }
@@ -170,7 +180,10 @@ export component SettingsScreen inherits Rectangle {
                             width: parent.width - 16px;
                             vertical-alignment: center;
                             text: root.cloud-model;
-                            edited => { root.cloud-model = self.text; }
+                            edited => {
+                                root.cloud-model = self.text;
+                                root.save-status = "UNSAVED CHANGES";
+                            }
                             color: Theme.text;
                         }
                     }
@@ -194,7 +207,10 @@ export component SettingsScreen inherits Rectangle {
                             vertical-alignment: center;
                             input-type: password;
                             text: root.api-key;
-                            edited => { root.api-key = self.text; }
+                            edited => {
+                                root.api-key = self.text;
+                                root.save-status = "UNSAVED CHANGES";
+                            }
                             color: Theme.text;
                         }
                     }
@@ -231,7 +247,12 @@ export component SettingsScreen inherits Rectangle {
                     color: Theme.muted;
                 }
                 Label {
-                    text: "Calendar connects through GNOME Online Accounts. Tasks and Gmail use Google OAuth.";
+                    text: "Calendar connects through GNOME Online Accounts. Tasks and Gmail need a separate OAuth Desktop app client ID.";
+                    color: Theme.muted;
+                    wrap: word-wrap;
+                }
+                Label {
+                    text: "Create it in Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID → Desktop app. Enable Tasks/Gmail APIs and add your account as a test user.";
                     color: Theme.muted;
                     wrap: word-wrap;
                 }
@@ -239,7 +260,7 @@ export component SettingsScreen inherits Rectangle {
                     spacing: 12px;
                     Label {
                         width: 130px;
-                        text: "DESKTOP CLIENT ID";
+                        text: "GOOGLE CLIENT ID";
                         color: Theme.muted;
                     }
                     Rectangle {
@@ -253,7 +274,10 @@ export component SettingsScreen inherits Rectangle {
                             width: parent.width - 16px;
                             vertical-alignment: center;
                             text: root.google-client-id;
-                            edited => { root.google-client-id = self.text; }
+                            edited => {
+                                root.google-client-id = self.text;
+                                root.save-status = "UNSAVED CHANGES";
+                            }
                             color: Theme.text;
                         }
                     }
@@ -262,7 +286,10 @@ export component SettingsScreen inherits Rectangle {
                     spacing: 8px;
                     Check {
                         checked: root.google-tasks;
-                        toggled => { root.google-tasks = !root.google-tasks; }
+                        toggled => {
+                            root.google-tasks = !root.google-tasks;
+                            root.save-status = "UNSAVED CHANGES";
+                        }
                     }
                     Label { text: "SYNC UNTIMED REMINDERS WITH TASKS"; color: Theme.text; vertical-alignment: center; }
                 }
@@ -270,7 +297,10 @@ export component SettingsScreen inherits Rectangle {
                     spacing: 8px;
                     Check {
                         checked: root.google-mail;
-                        toggled => { root.google-mail = !root.google-mail; }
+                        toggled => {
+                            root.google-mail = !root.google-mail;
+                            root.save-status = "UNSAVED CHANGES";
+                        }
                     }
                     Label { text: "COUNT NEW UNREAD MAIL IN BRIEFING"; color: Theme.text; vertical-alignment: center; }
                 }
@@ -316,13 +346,18 @@ export component SettingsScreen inherits Rectangle {
         HorizontalLayout {
             alignment: end;
             spacing: 12px;
+            Label {
+                text: root.save-status;
+                color: root.save-status == "SAVE FAILED" ? Theme.muted : Theme.accent-text;
+                vertical-alignment: center;
+            }
             Rectangle {
-                width: 100px;
+                width: 170px;
                 height: 40px;
                 background: Theme.accent-fill;
                 border-radius: 8px;
                 Label {
-                    text: "SAVE";
+                    text: "SAVE SETTINGS";
                     color: Theme.on-accent;
                     horizontal-alignment: center;
                     vertical-alignment: center;
@@ -332,7 +367,16 @@ export component SettingsScreen inherits Rectangle {
                 }
                 TouchArea {
                     clicked => {
-                        root.save(root.local-url, root.local-model, root.cloud-provider, root.cloud-model, root.api-key);
+                        root.save(
+                            root.local-url,
+                            root.local-model,
+                            root.cloud-provider,
+                            root.cloud-model,
+                            root.api-key,
+                            root.google-client-id,
+                            root.google-tasks,
+                            root.google-mail
+                        );
                     }
                 }
             }

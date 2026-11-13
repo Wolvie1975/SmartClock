@@ -73,11 +73,12 @@ export component AppWindow inherits Window {
     in property <bool> google-tasks: true;
     in property <bool> google-mail: true;
     in property <bool> google-busy: false;
+    in-out property <string> settings-save-status: "";
 
     callback activity();          // any pointer movement → reset idle timer
     callback toggle-theme();
     callback quit();
-    callback save-ai-settings(string, string, string, string, string);
+    callback save-settings(string, string, string, string, string, string, bool, bool);
     callback connect-google(string, bool, bool);
     callback connect-calendar();
     callback disconnect-google();
@@ -186,8 +187,9 @@ export component AppWindow inherits Window {
                 google-tasks: root.google-tasks;
                 google-mail: root.google-mail;
                 google-busy: root.google-busy;
-                save(local_url, local_model, cloud_provider, cloud_model, api_key) => {
-                    root.save-ai-settings(local_url, local_model, cloud_provider, cloud_model, api_key);
+                save-status: root.settings-save-status;
+                save(local_url, local_model, cloud_provider, cloud_model, api_key, google_client_id, google_tasks, google_mail) => {
+                    root.save-settings(local_url, local_model, cloud_provider, cloud_model, api_key, google_client_id, google_tasks, google_mail);
                 }
                 connect_google(client_id, tasks, mail) => {
                     root.connect-google(client_id, tasks, mail);

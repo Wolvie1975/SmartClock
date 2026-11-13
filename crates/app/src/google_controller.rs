@@ -30,6 +30,7 @@ const TASKS_SETTING: &str = "google_tasks_enabled";
 const MAIL_SETTING: &str = "google_mail_enabled";
 const TASK_LIST_SETTING: &str = "google_task_list_id";
 const MAIL_HISTORY_SETTING: &str = "google_mail_history_id";
+const RECONNECT_SETTING: &str = "google_reconnect_required";
 
 enum Event {
     Authorization(Result<(), String>),
@@ -93,6 +94,7 @@ impl GoogleController {
         let tasks_enabled = store.setting_or(TASKS_SETTING, true)?;
         let mail_enabled = store.setting_or(MAIL_SETTING, true)?;
         let calendar_enabled = store.setting_or("google_calendar_enabled", false)?;
+        let reconnect_required = store.setting_or(RECONNECT_SETTING, false)?;
         let client_id = store.get_setting(CLIENT_ID_SETTING)?.unwrap_or_default();
         let this = Rc::new(Self {
             store,
@@ -140,6 +142,11 @@ impl GoogleController {
             this.start_calendar_fetch();
         }
         match secrets::get_blocking("google-refresh-token") {
+            Ok(Some(_)) if reconnect_required => {
+                ui.set_google_status("RECONNECT TO APPLY SETTINGS".into());
+                ui.global::<Google>()
+                    .set_tasks_status("RECONNECT REQUIRED".into());
+            }
             Ok(Some(_)) => {
                 this.connected.set(true);
                 ui.set_google_status("CONNECTED".into());
@@ -187,23 +194,16 @@ impl GoogleController {
             ui.set_google_status("SELECT A SERVICE".into());
             return;
         }
-        if let Err(error) = self.store.set_setting(CLIENT_ID_SETTING, &client_id) {
-            tracing::error!("saving Google client ID failed: {error}");
+        if let Err(error) = self.save_preferences(&client_id, tasks, mail) {
+            tracing::error!("saving Google settings failed: {error:#}");
             ui.set_google_status("SETTINGS ERROR".into());
             return;
         }
-        for (key, enabled) in [(TASKS_SETTING, tasks), (MAIL_SETTING, mail)] {
-            if let Err(error) = self
-                .store
-                .set_setting(key, if enabled { "true" } else { "false" })
-            {
-                tracing::error!("saving Google service setting failed: {error}");
-                ui.set_google_status("SETTINGS ERROR".into());
-                return;
-            }
+        if let Err(error) = self.store.set_setting(RECONNECT_SETTING, "true") {
+            tracing::error!("saving Google reconnect state failed: {error}");
+            ui.set_google_status("SETTINGS ERROR".into());
+            return;
         }
-        self.tasks_enabled.set(tasks);
-        self.mail_enabled.set(mail);
         self.abort_job();
         self.connected.set(false);
         self.sync_requested.set(false);
@@ -228,11 +228,39 @@ impl GoogleController {
         *self.job.borrow_mut() = Some(handle);
     }
 
+    pub fn save_preferences(&self, client_id: &str, tasks: bool, mail: bool) -> Result<bool> {
+        let previous_client_id = self
+            .store
+            .get_setting(CLIENT_ID_SETTING)?
+            .unwrap_or_default();
+        let previous_tasks = self.store.setting_or(TASKS_SETTING, true)?;
+        let previous_mail = self.store.setting_or(MAIL_SETTING, true)?;
+        let changed =
+            previous_client_id != client_id || previous_tasks != tasks || previous_mail != mail;
+        let reconnect_required = self.connected.get() && changed;
+        if reconnect_required {
+            self.store.set_setting(RECONNECT_SETTING, "true")?;
+            self.connected.set(false);
+            self.sync_requested.set(false);
+        }
+        self.store.set_setting(CLIENT_ID_SETTING, client_id)?;
+        self.store
+            .set_setting(TASKS_SETTING, if tasks { "true" } else { "false" })?;
+        self.store
+            .set_setting(MAIL_SETTING, if mail { "true" } else { "false" })?;
+        self.tasks_enabled.set(tasks);
+        self.mail_enabled.set(mail);
+        Ok(reconnect_required)
+    }
+
     fn disconnect(&self, ui: &AppWindow) {
         self.abort_job();
         self.busy.set(true);
         self.connected.set(false);
         self.sync_requested.set(false);
+        if let Err(error) = self.store.set_setting(RECONNECT_SETTING, "false") {
+            tracing::error!("clearing Google reconnect state failed: {error}");
+        }
         ui.set_google_busy(true);
         ui.set_google_status("DISCONNECTING…".into());
         let tx = self.tx.clone();
@@ -292,6 +320,11 @@ impl GoogleController {
                     ui.set_google_busy(false);
                     match result {
                         Ok(()) => {
+                            if let Err(error) = self.store.set_setting(RECONNECT_SETTING, "false") {
+                                tracing::error!("clearing Google reconnect state failed: {error}");
+                                ui.set_google_status("SETTINGS ERROR".into());
+                                return;
+                            }
                             self.connected.set(true);
                             ui.set_google_status("CONNECTED".into());
                             ui.global::<Google>().set_tasks_status("CONNECTED".into());

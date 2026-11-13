@@ -470,7 +470,7 @@ keyring.create_item(
 
 5. Request only the scopes ticked in Settings → Accounts. Changing them starts a new consent.
 
-In Smart Clock, enter the Desktop app's client ID in Settings → Accounts and select Tasks and/or Gmail before connecting. The app stores the refresh token in GNOME Keyring; Calendar remains a separate GNOME Online Accounts connection. Google sign-in and account sync require a configured OAuth client and were not part of offline test runs.
+Create a Desktop app OAuth client ID in Google Cloud Console under APIs & Services → Credentials, enable the Tasks and Gmail APIs, and add your account as a test user. In Smart Clock, paste the client ID into **Google Client ID**, choose Tasks and/or Gmail, click **Save Settings**, then **Connect Tasks / Gmail**. This client ID is separate from the GNOME login; the app stores its refresh token in GNOME Keyring, while Calendar remains a separate GNOME Online Accounts connection. Google sign-in and account sync require a configured OAuth client and were not part of offline test runs.
 
 ### 12.4 Reminders ↔ Google Tasks rules
 

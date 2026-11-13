@@ -164,30 +164,40 @@ fn main() -> anyhow::Result<()> {
         let a = assistant.clone();
         move |ui, q| a.ask(ui, q)
     });
-    ui.on_save_ai_settings({
+    ui.on_save_settings({
         let weak = ui.as_weak();
         let store = store.clone();
+        let google = google.clone();
         move |local_url: slint::SharedString,
               local_model: slint::SharedString,
               cloud_provider: slint::SharedString,
               cloud_model: slint::SharedString,
-              api_key: slint::SharedString| {
+              api_key: slint::SharedString,
+              google_client_id: slint::SharedString,
+              google_tasks: bool,
+              google_mail: bool| {
             let local_url = local_url.as_str().trim();
             let local_model = local_model.as_str().trim();
             let cloud_provider = cloud_provider.as_str().trim().to_uppercase();
             let cloud_model = cloud_model.as_str().trim();
             let api_key = api_key.as_str().trim();
+            let google_client_id = google_client_id.as_str().trim();
+            let mut save_succeeded = true;
             if let Err(e) = store.set_setting("ollama_url", local_url) {
                 tracing::warn!("saving ollama_url failed: {e}");
+                save_succeeded = false;
             }
             if let Err(e) = store.set_setting("ollama_model", local_model) {
                 tracing::warn!("saving ollama_model failed: {e}");
+                save_succeeded = false;
             }
             if let Err(e) = store.set_setting("cloud_provider", &cloud_provider) {
                 tracing::warn!("saving cloud_provider failed: {e}");
+                save_succeeded = false;
             }
             if let Err(e) = store.set_setting("cloud_model", cloud_model) {
                 tracing::warn!("saving cloud_model failed: {e}");
+                save_succeeded = false;
             }
             let key_saved = match secrets::set_blocking(
                 "cloud-api-key",
@@ -199,6 +209,18 @@ fn main() -> anyhow::Result<()> {
                     false
                 }
             };
+            if !key_saved {
+                save_succeeded = false;
+            }
+            let reconnect_required =
+                match google.save_preferences(google_client_id, google_tasks, google_mail) {
+                    Ok(reconnect_required) => reconnect_required,
+                    Err(e) => {
+                        tracing::warn!("saving Google settings failed: {e:#}");
+                        save_succeeded = false;
+                        false
+                    }
+                };
             if let Some(ui) = weak.upgrade() {
                 let chat = ui.global::<Chat>();
                 chat.set_local_model(local_model.into());
@@ -215,6 +237,20 @@ fn main() -> anyhow::Result<()> {
                 ui.set_ai_cloud_provider(cloud_provider.into());
                 ui.set_ai_cloud_model(cloud_model.into());
                 ui.set_ai_api_key(api_key.into());
+                ui.set_google_client_id(google_client_id.into());
+                ui.set_google_tasks(google_tasks);
+                ui.set_google_mail(google_mail);
+                ui.set_settings_save_status(
+                    if save_succeeded {
+                        "SAVED"
+                    } else {
+                        "SAVE FAILED"
+                    }
+                    .into(),
+                );
+                if reconnect_required {
+                    ui.set_google_status("RECONNECT TO APPLY SETTINGS".into());
+                }
             }
         }
     });
