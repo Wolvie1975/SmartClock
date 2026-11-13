@@ -33,7 +33,11 @@ pub struct Sound {
 impl Sound {
     pub fn new() -> Self {
         Self {
-            shared: Arc::new(Mutex::new(Shared { pattern: Pattern::Alarm, volume: 0.0, sample: 0 })),
+            shared: Arc::new(Mutex::new(Shared {
+                pattern: Pattern::Alarm,
+                volume: 0.0,
+                sample: 0,
+            })),
             stream: None,
             playing: None,
             warned: false,
@@ -86,7 +90,11 @@ impl Sound {
         Ok(stream)
     }
 
-    fn build<T>(&self, device: &cpal::Device, config: cpal::StreamConfig) -> anyhow::Result<cpal::Stream>
+    fn build<T>(
+        &self,
+        device: &cpal::Device,
+        config: cpal::StreamConfig,
+    ) -> anyhow::Result<cpal::Stream>
     where
         T: SizedSample + FromSample<f32>,
     {
@@ -120,11 +128,19 @@ fn synth(pattern: Pattern, t: f32) -> f32 {
     match pattern {
         Pattern::Alarm => {
             let p = t % 2.0;
-            bell(p, 880.0) + if p >= 0.35 { bell(p - 0.35, 660.0) } else { 0.0 }
+            bell(p, 880.0)
+                + if p >= 0.35 {
+                    bell(p - 0.35, 660.0)
+                } else {
+                    0.0
+                }
         }
         Pattern::Timer => {
             let p = t % 1.0;
-            [0.0, 0.15, 0.30].iter().map(|start| beep(p - start, 1046.5)).sum()
+            [0.0, 0.15, 0.30]
+                .iter()
+                .map(|start| beep(p - start, 1046.5))
+                .sum()
         }
     }
 }
@@ -135,7 +151,10 @@ fn bell(dt: f32, f: f32) -> f32 {
     }
     let attack = (dt / 0.005).min(1.0);
     let env = attack * (-4.0 * dt).exp();
-    0.28 * env * ((TAU * f * dt).sin() + 0.35 * (TAU * 2.0 * f * dt).sin() + 0.12 * (TAU * 3.0 * f * dt).sin())
+    0.28 * env
+        * ((TAU * f * dt).sin()
+            + 0.35 * (TAU * 2.0 * f * dt).sin()
+            + 0.12 * (TAU * 3.0 * f * dt).sin())
 }
 
 fn beep(dt: f32, f: f32) -> f32 {

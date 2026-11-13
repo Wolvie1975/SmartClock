@@ -100,7 +100,8 @@ impl Ringer {
 
         handler!(on_timer_add_minute, |r, ui| {
             if let Some(id) = r.timer_id.get() {
-                r.store.add_timer_time(id, Duration::from_secs(60), Utc::now())?;
+                r.store
+                    .add_timer_time(id, Duration::from_secs(60), Utc::now())?;
             }
         });
         handler!(on_timer_stop, |r, ui| {
@@ -122,13 +123,19 @@ impl Ringer {
             let snooze = r.prefs()?.snooze;
             if let Some(a) = r.active.borrow_mut().as_mut() {
                 let until = Utc::now() + chrono::Duration::from_std(snooze)?;
-                a.phase = Phase::Snoozed { until, hidden: false };
+                a.phase = Phase::Snoozed {
+                    until,
+                    hidden: false,
+                };
             }
         });
         handler!(on_alarm_dismiss, |r, ui| {
             if let Some(a) = r.active.borrow_mut().as_mut() {
                 let note = Local::now().format("%A, %-d %B").to_string().to_uppercase();
-                a.phase = Phase::Dismissed { since: Instant::now(), note };
+                a.phase = Phase::Dismissed {
+                    since: Instant::now(),
+                    note,
+                };
             }
         });
         handler!(on_alarm_close, |r, ui| {
@@ -137,15 +144,18 @@ impl Ringer {
                 Some(Phase::Snoozed { until, hidden }) => {
                     *hidden = true;
                     let at = time12(until.with_timezone(&Local).time());
-                    r.dash.notify(&ui, &format!("SNOOZED · RINGS AGAIN AT {at}"));
+                    r.dash
+                        .notify(&ui, &format!("SNOOZED · RINGS AGAIN AT {at}"));
                 }
                 Some(Phase::Dismissed { .. }) => *active = None,
                 _ => {}
             }
         });
         handler!(on_play_briefing, |r, ui| {
-            if let Some(Active { phase: Phase::Dismissed { note, .. }, .. }) =
-                r.active.borrow_mut().as_mut()
+            if let Some(Active {
+                phase: Phase::Dismissed { note, .. },
+                ..
+            }) = r.active.borrow_mut().as_mut()
             {
                 *note = "BRIEFING · VOICE ARRIVES IN PHASE 4".into();
             }
@@ -185,13 +195,20 @@ impl Ringer {
                     Some(Phase::Ringing { .. } | Phase::Snoozed { .. })
                 );
                 if late {
-                    tracing::warn!(alarm = a.id, "missed alarm skipped (app was closed or asleep)");
+                    tracing::warn!(
+                        alarm = a.id,
+                        "missed alarm skipped (app was closed or asleep)"
+                    );
                 } else if busy {
                     tracing::warn!(alarm = a.id, "alarm came due while another is ringing");
                 } else {
                     tracing::info!(alarm = a.id, "alarm ringing");
-                    *self.active.borrow_mut() =
-                        Some(Active { alarm: a, phase: Phase::Ringing { since: Instant::now() } });
+                    *self.active.borrow_mut() = Some(Active {
+                        alarm: a,
+                        phase: Phase::Ringing {
+                            since: Instant::now(),
+                        },
+                    });
                 }
             }
             self.dash.refresh(ui); // one-off alarms switched off, next fire moved
@@ -208,10 +225,12 @@ impl Ringer {
                         note: format!("STOPPED AFTER {mins} MIN"),
                     }))
                 }
-                Some(Phase::Snoozed { until, .. }) if utc >= *until => {
-                    Some(Some(Phase::Ringing { since: Instant::now() }))
+                Some(Phase::Snoozed { until, .. }) if utc >= *until => Some(Some(Phase::Ringing {
+                    since: Instant::now(),
+                })),
+                Some(Phase::Dismissed { since, .. }) if since.elapsed() >= DISMISSED_CLOSE => {
+                    Some(None)
                 }
-                Some(Phase::Dismissed { since, .. }) if since.elapsed() >= DISMISSED_CLOSE => Some(None),
                 _ => None,
             };
             match next {

@@ -11,12 +11,20 @@ mod dashboard;
 mod inhibit;
 mod ringing;
 mod sound;
+mod weather;
 
 slint::include_modules!();
 
 const DEFAULT_IDLE_MINUTES: u64 = 5; // Settings → Idle screen
 /// Burn-in drift cycle on the idle screen, one step per minute (px).
-const DRIFT: [(f32, f32); 6] = [(0., 0.), (3., 2.), (-2., 3.), (-3., -1.), (2., -3.), (1., 1.)];
+const DRIFT: [(f32, f32); 6] = [
+    (0., 0.),
+    (3., 2.),
+    (-2., 3.),
+    (-3., -1.),
+    (2., -3.),
+    (1., 1.),
+];
 
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
@@ -40,7 +48,9 @@ fn main() -> anyhow::Result<()> {
         .get_setting("idle_minutes")?
         .and_then(|v| v.parse::<f64>().ok());
     let idle_timeout = Duration::from_secs_f64(
-        60.0 * cli_idle.or(saved_idle).unwrap_or(DEFAULT_IDLE_MINUTES as f64),
+        60.0 * cli_idle
+            .or(saved_idle)
+            .unwrap_or(DEFAULT_IDLE_MINUTES as f64),
     );
 
     // Keep GNOME from blanking the screen. Not fatal if unavailable (e.g. non-GNOME session).
@@ -80,6 +90,11 @@ fn main() -> anyhow::Result<()> {
         move || a()
     });
     let ringer = ringing::Ringer::install(&ui, store.clone(), dash.clone());
+    let weather = weather::WeatherController::install(&ui, store.clone());
+    dash.set_location_hook({
+        let w = weather.clone();
+        move |q| w.set_location(q)
+    });
 
     {
         let weak = ui.as_weak();
@@ -110,11 +125,20 @@ fn main() -> anyhow::Result<()> {
             ui.set_time_hm(format!("{}:{:02}", h12, now.minute()).into());
             ui.set_time_ss(format!("{:02}", now.second()).into());
             ui.set_ampm(if now.hour() >= 12 { "PM" } else { "AM" }.into());
-            ui.set_date_label(now.format("%A, %-d %B %Y").to_string().to_uppercase().into());
+            ui.set_date_label(
+                now.format("%A, %-d %B %Y")
+                    .to_string()
+                    .to_uppercase()
+                    .into(),
+            );
             ui.set_week_label(format!("WEEK {}", now.iso_week().week()).into());
             ui.set_day_progress(now.num_seconds_from_midnight() as f32 / 86_400.0);
             dash.tick(&ui);
             ringer.tick(&ui);
+            weather.tick(&ui);
+            if let Some(note) = weather.located.borrow_mut().take() {
+                dash.notify(&ui, &note);
+            }
             ui.set_info_strip(dash.info_strip().into());
 
             let (dx, dy) = DRIFT[(now.minute() as usize) % DRIFT.len()];

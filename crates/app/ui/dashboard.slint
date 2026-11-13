@@ -3,6 +3,7 @@ import { Label } from "widgets/label.slint";
 import { DayTimeline } from "widgets/timeline.slint";
 import { TextButton, Toggle, Check } from "widgets/controls.slint";
 import { Dash, TimerRow, AlarmRow, ReminderRow } from "state.slint";
+import { WeatherPanel } from "weather.slint";
 
 // ---------------------------------------------------------------------------
 // Columns
@@ -328,14 +329,7 @@ export component Dashboard inherits Rectangle {
                     }
                 }
             }
-            // Weather panel (Open-Meteo) arrives later in Phase 2.
-            Rectangle {
-                width: 640px;
-                border-width: Theme.hairline;
-                border-color: Theme.line;
-                border-radius: Theme.radius;
-                Label { text: "WEATHER"; }
-            }
+            WeatherPanel { width: 640px; }
         }
 
         DayTimeline {

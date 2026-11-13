@@ -327,6 +327,7 @@ The dashboard command bar and the assistant both run input through this parser f
 | `remind me tomorrow to call the bank` | Dated reminder, no time (syncs) |
 | `cancel tea timer`, `stop all timers` | Remove timers |
 | `brief me` | Play the briefing |
+| `location Austin, TX` | Set the weather location (looked up once via Open-Meteo geocoding; handled by the dashboard, not the offline parser, because it needs the network) |
 
 Also understood: `set a 5 minute timer`, `remind me in 20 minutes to …`, `remind me to … tomorrow at 9`, `alarm 7am mon wed fri`, `alarm 5:30am gym weekdays` (label "Gym"), `noon` / `midnight`, `cancel timer` (latest).
 
@@ -520,7 +521,7 @@ X-GNOME-Autostart-enabled=true
 - [x] Dashboard: four columns, command bar, day timeline markers
 - [x] Timer takeover overlay and alarm ringing overlay (section 7), with sounds through `cpal` (synthesized chime/beeps for now)
 - [x] Snooze, auto-stop and volume ramp (settings keys `snooze_min` 9, `autostop_min` 10, `ramp` true, `volume` 80; the Settings screen comes later)
-- [ ] Weather panel from Open-Meteo: now, 8-hour strip, 5-day range bars
+- [x] Weather panel from Open-Meteo: now, 8-hour strip, 5-day range bars (°F / mph; set the place with `location <city>` in the command bar)
 
 **Done when:** everything on the dashboard works offline with no AI and no Google.
 

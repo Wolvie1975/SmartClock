@@ -95,3 +95,20 @@ export global Ring {
     callback alarm-close();
     callback play-briefing();
 }
+
+// Weather panel (Open-Meteo).
+export struct HourCell { hour: string, temp: string, precip: string }
+export struct DayCell { day: string, condition: string, lo: string, hi: string, start: float, end: float }
+
+export global Weather {
+    in property <bool> has-data;
+    in property <string> message;   // shown when there's no data
+    in property <string> place;
+    in property <string> updated;
+    in property <string> temp;
+    in property <string> condition;
+    in property <string> details;
+    in property <string> hilo;
+    in property <[HourCell]> hours;
+    in property <[DayCell]> days;
+}

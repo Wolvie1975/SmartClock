@@ -10,6 +10,8 @@ use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+type LocationHook = Box<dyn Fn(&str)>;
+
 pub struct DashController {
     store: Rc<Store>,
     timers: Rc<VecModel<TimerRow>>,
@@ -19,6 +21,7 @@ pub struct DashController {
     undo: RefCell<Option<Undo>>,
     info_strip: RefCell<String>,
     last_minute: Cell<u32>,
+    location_hook: RefCell<Option<LocationHook>>,
 }
 
 fn now() -> (DateTime<Utc>, NaiveDateTime) {
@@ -43,11 +46,7 @@ fn timer_row(t: &Timer, now: DateTime<Utc>) -> TimerRow {
 }
 
 impl DashController {
-    pub fn install(
-        ui: &AppWindow,
-        store: Rc<Store>,
-        on_activity: impl Fn() + 'static,
-    ) -> Rc<Self> {
+    pub fn install(ui: &AppWindow, store: Rc<Store>, on_activity: impl Fn() + 'static) -> Rc<Self> {
         let this = Rc::new(Self {
             store,
             timers: Rc::new(VecModel::default()),
@@ -57,6 +56,7 @@ impl DashController {
             undo: RefCell::new(None),
             info_strip: RefCell::new(String::new()),
             last_minute: Cell::new(u32::MAX),
+            location_hook: RefCell::new(None),
         });
 
         let dash = ui.global::<Dash>();
@@ -85,7 +85,9 @@ impl DashController {
             }};
         }
 
-        handler!(on_submit, |c, ui, text: SharedString| { c.submit(&ui, &text)? });
+        handler!(on_submit, |c, ui, text: SharedString| {
+            c.submit(&ui, &text)?
+        });
         handler!(on_undo, |c, ui| {
             if let Some(u) = c.undo.borrow_mut().take() {
                 actions::undo(&c.store, &u)?;
@@ -140,10 +142,37 @@ impl DashController {
         this
     }
 
+    /// "location Austin, TX" in the command bar calls this.
+    pub fn set_location_hook(&self, hook: impl Fn(&str) + 'static) {
+        *self.location_hook.borrow_mut() = Some(Box::new(hook));
+    }
+
     fn submit(&self, ui: &AppWindow, text: &str) -> anyhow::Result<()> {
         let (utc, local) = now();
+        let trimmed = text.trim();
+        let lower = trimmed.to_lowercase();
+        let prefix = ["set location ", "weather location ", "location "]
+            .into_iter()
+            .find(|p| lower.starts_with(p));
+        if let (Some(p), Some(hook)) = (prefix, self.location_hook.borrow().as_ref()) {
+            let query = trimmed[p.len()..].trim();
+            hook(query);
+            self.show_result(
+                ui,
+                &format!("LOOKING UP {} …", query.to_uppercase()),
+                false,
+                false,
+            );
+            ui.global::<Dash>().set_command(SharedString::new());
+            return Ok(());
+        }
         let Some(cmd) = command::parse(text, local) else {
-            self.show_result(ui, "NOT A CLOCK COMMAND · ASSISTANT ARRIVES IN PHASE 3", false, false);
+            self.show_result(
+                ui,
+                "NOT A CLOCK COMMAND · ASSISTANT ARRIVES IN PHASE 3",
+                false,
+                false,
+            );
             return Ok(());
         };
         let applied = actions::apply(&self.store, cmd, utc, local)?;
@@ -191,7 +220,8 @@ impl DashController {
         let dash = ui.global::<Dash>();
 
         let timers = self.store.timers()?;
-        self.timers.set_vec(timers.iter().map(|t| timer_row(t, utc)).collect::<Vec<_>>());
+        self.timers
+            .set_vec(timers.iter().map(|t| timer_row(t, utc)).collect::<Vec<_>>());
 
         let alarms = self.store.alarms()?;
         self.alarms.set_vec(
@@ -236,7 +266,11 @@ impl DashController {
             .map(|n| n.with_timezone(&Local).naive_local());
         let next_label = next.map(|n| {
             let day = day_word(n.date(), local);
-            if day == "TODAY" { time12(n.time()) } else { format!("{day} {}", time12(n.time())) }
+            if day == "TODAY" {
+                time12(n.time())
+            } else {
+                format!("{day} {}", time12(n.time()))
+            }
         });
         let open = reminders.iter().filter(|r| !r.done).count();
         dash.set_next_alarm(next_label.clone().unwrap_or_else(|| "NONE".into()).into());
@@ -262,21 +296,33 @@ impl DashController {
         let today = local.date();
         let mut markers = Vec::new();
         for a in alarms.iter().filter(|a| a.enabled) {
-            if let Some(n) = a.next_fire_utc.map(|n| n.with_timezone(&Local).naive_local()) {
+            if let Some(n) = a
+                .next_fire_utc
+                .map(|n| n.with_timezone(&Local).naive_local())
+            {
                 if n.date() == today {
-                    markers.push(Marker { pos: day_fraction(n), kind: 0 });
+                    markers.push(Marker {
+                        pos: day_fraction(n),
+                        kind: 0,
+                    });
                 }
             }
         }
         for r in reminders.iter().filter(|r| !r.done) {
             if let Some(at) = r.fires_at().filter(|at| at.date() == today) {
-                markers.push(Marker { pos: day_fraction(at), kind: 1 });
+                markers.push(Marker {
+                    pos: day_fraction(at),
+                    kind: 1,
+                });
             }
         }
         for t in &timers {
             if let Some(end) = t.ends_utc.map(|e| e.with_timezone(&Local).naive_local()) {
                 if end.date() == today && end > local {
-                    markers.push(Marker { pos: day_fraction(end), kind: 2 });
+                    markers.push(Marker {
+                        pos: day_fraction(end),
+                        kind: 2,
+                    });
                 }
             }
         }
@@ -292,7 +338,9 @@ impl DashController {
             self.refresh(ui); // markers, "TODAY"/"TOMORROW" labels
             return;
         }
-        let Ok(timers) = self.store.timers() else { return };
+        let Ok(timers) = self.store.timers() else {
+            return;
+        };
         if timers.len() != self.timers.row_count() {
             return self.refresh(ui);
         }
