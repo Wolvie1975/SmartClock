@@ -3,6 +3,7 @@
 How to set up Smart Clock on a Fedora Workstation laptop (GNOME on Wayland), from a fresh machine to a running clock with local AI.
 
 For how the code is organised and the build plan, see [DEVELOPMENT.md](DEVELOPMENT.md).
+For moving the app to another Fedora machine, see [DEPLOY.md](DEPLOY.md).
 
 ---
 
@@ -77,7 +78,7 @@ The **LIGHT / DARK** button in the top-right corner switches the theme. The app 
 
 ## 5. Local AI: Ollama in Docker
 
-The assistant runs its everyday questions and the daily briefing on a local model through [Ollama](https://ollama.com), so that data stays on the laptop. Ollama runs in a Docker container.
+The assistant can run conversations through [Ollama](https://ollama.com) on a local model. Ollama runs in a Docker container; the News column is fetched separately from Google News RSS.
 
 Only the assistant needs Ollama. The clock, timers, alarms, reminders and the command bar all work without it.
 
@@ -128,7 +129,7 @@ This laptop runs models on the CPU (the integrated Intel graphics can't be used 
 | `qwen3:4b` | ~2.6 GB | roughly half the speed | Smarter answers |
 | `llama3.1:8b` | ~5 GB | ~5 tokens/s | Only if you have the memory to spare |
 
-To try another model, pull it the same way (`docker exec ollama ollama pull qwen3:4b`) and choose it in Settings → AI & Models once that screen exists.
+To try another model, pull it the same way (`docker exec ollama ollama pull qwen3:4b`) and choose it in Settings → AI & Models.
 
 ### 5.5 Everyday commands
 
@@ -145,15 +146,15 @@ docker rm -f ollama
 # …then run the `docker run` command from 5.1 again
 ```
 
-## 6. Cloud AI (later)
+## 6. Optional cloud AI
 
-Coding and research questions go to a cloud model (Anthropic first, then Gemini). API keys are entered in Settings → AI & Models and stored in GNOME Keyring, never in the app's database. That screen arrives with the assistant in Phase 3.
+LOCAL conversations use the Ollama model on this machine. CLOUD mode is optional and sends that conversation to the configured provider. Set the provider and API key in Settings → AI & Models; the key is stored in GNOME Keyring, not in the app database. Cloud setup is not required for deployment.
 
 ## 7. Where things are kept
 
 | What | Where |
 | --- | --- |
-| Alarms, timers, reminders, settings, cached weather | `~/.local/share/smart-clock/clock.db` |
+| Alarms, timers, reminders, settings, cached weather and News | `~/.local/share/smart-clock/clock.db` |
 | API keys and Google sign-in (later) | GNOME Keyring (open **Passwords and Keys** to see them) |
 | Ollama models | Docker volume `ollama` |
 
