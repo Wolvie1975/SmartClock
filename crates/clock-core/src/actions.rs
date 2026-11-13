@@ -4,7 +4,7 @@
 //! through [`apply`], so every path behaves the same and can be undone the same way.
 
 use crate::command::{Command, TimerTarget};
-use crate::model::{days_label, duration_label, time12, Timer};
+use crate::model::{days_label, duration_label, time12, Alarm, Reminder, Timer};
 use crate::store::{Result, Store};
 use chrono::{DateTime, NaiveDateTime, Utc};
 
@@ -14,6 +14,8 @@ pub enum Undo {
     DeleteAlarm(i64),
     DeleteReminder(i64),
     RestoreTimers(Vec<Timer>),
+    RestoreAlarm(Alarm),
+    RestoreReminder(Reminder),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -131,6 +133,8 @@ pub fn undo(store: &Store, undo: &Undo) -> Result<()> {
         Undo::DeleteAlarm(id) => drop(store.delete_alarm(*id)?),
         Undo::DeleteReminder(id) => drop(store.delete_reminder(*id)?),
         Undo::RestoreTimers(ts) => ts.iter().try_for_each(|t| store.restore_timer(t))?,
+        Undo::RestoreAlarm(a) => store.restore_alarm(a)?,
+        Undo::RestoreReminder(r) => store.restore_reminder(r)?,
     }
     Ok(())
 }

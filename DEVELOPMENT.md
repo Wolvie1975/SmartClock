@@ -515,7 +515,7 @@ X-GNOME-Autostart-enabled=true
 ### Phase 2: Timers, alarms, reminders (local)
 - [x] SQLite schema and repository layer in `clock-core` (section 8); `actions::apply` + UNDO shared by every input path
 - [x] Command parser with tests (section 9)
-- [ ] Dashboard: four columns, command bar, day timeline markers
+- [x] Dashboard: four columns, command bar, day timeline markers
 - [ ] Timer takeover overlay and alarm ringing overlay (section 7), with sounds through `cpal`
 - [ ] Snooze, auto-stop and volume ramp from Settings → Alarm sounds
 - [ ] Weather panel from Open-Meteo: now, 8-hour strip, 5-day range bars

@@ -7,6 +7,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod dashboard;
 mod inhibit;
 
 slint::include_modules!();
@@ -55,19 +56,27 @@ fn main() -> anyhow::Result<()> {
 
     let last_activity = Rc::new(Cell::new(Instant::now()));
 
-    // Pointer movement → dashboard + reset idle timer
-    {
+    // Pointer movement or typing → dashboard + reset idle timer
+    let activity: Rc<dyn Fn()> = {
         let weak = ui.as_weak();
         let last = last_activity.clone();
-        ui.on_activity(move || {
+        Rc::new(move || {
             last.set(Instant::now());
             if let Some(ui) = weak.upgrade() {
                 if ui.get_screen() == Screen::Idle {
                     ui.set_screen(Screen::Dashboard);
                 }
             }
-        });
-    }
+        })
+    };
+    ui.on_activity({
+        let a = activity.clone();
+        move || a()
+    });
+    let dash = dashboard::DashController::install(&ui, store.clone(), {
+        let a = activity.clone();
+        move || a()
+    });
 
     {
         let weak = ui.as_weak();
@@ -101,7 +110,8 @@ fn main() -> anyhow::Result<()> {
             ui.set_date_label(now.format("%A, %-d %B %Y").to_string().to_uppercase().into());
             ui.set_week_label(format!("WEEK {}", now.iso_week().week()).into());
             ui.set_day_progress(now.num_seconds_from_midnight() as f32 / 86_400.0);
-            ui.set_info_strip("NO ALARMS · NO TIMERS · NO REMINDERS".into());
+            dash.tick(&ui);
+            ui.set_info_strip(dash.info_strip().into());
 
             let (dx, dy) = DRIFT[(now.minute() as usize) % DRIFT.len()];
             ui.set_drift_x(dx);

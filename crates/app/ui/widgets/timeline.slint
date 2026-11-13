@@ -1,9 +1,12 @@
 import { Theme } from "../theme.slint";
 import { Label } from "label.slint";
+import { Marker } from "../state.slint";
 
 // 24-hour day bar, 12 AM → 12 AM. `progress` is the fraction of the day elapsed (0..1).
+// Markers: alarms (accent, full height), reminders (text color), timer ends (muted).
 export component DayTimeline inherits Rectangle {
     in property <float> progress;
+    in property <[Marker]> markers;
     height: 56px;
 
     property <[string]> ticks: ["12A", "3A", "6A", "9A", "12P", "3P", "6P", "9P", "12A"];
@@ -26,11 +29,19 @@ export component DayTimeline inherits Rectangle {
             width: Theme.hairline;
             background: Theme.line;
         }
+        for m in root.markers: Rectangle {
+            x: parent.width * m.pos - self.width / 2;
+            width: m.kind == 0 ? 4px : 6px;
+            height: m.kind == 0 ? parent.height : 6px;
+            y: m.kind == 0 ? 0 : (parent.height - self.height) / 2;
+            border-radius: m.kind == 0 ? 0 : 3px;
+            background: m.kind == 0 ? Theme.accent-fill : m.kind == 1 ? Theme.text : Theme.muted;
+        }
         // now marker
         Rectangle {
             x: parent.width * root.progress - 1px;
             width: 2px;
-            background: Theme.accent-fill;
+            background: Theme.text;
         }
     }
 

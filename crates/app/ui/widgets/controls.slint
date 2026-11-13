@@ -1,0 +1,93 @@
+import { Theme } from "../theme.slint";
+import { Label } from "label.slint";
+
+// Bordered mono label button; `primary` fills it with the accent.
+export component TextButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary: false;
+    in property <bool> enabled: true;
+    callback clicked();
+
+    min-width: Theme.touch;
+    height: Theme.touch;
+    border-radius: Theme.radius;
+    border-width: root.primary ? 0 : Theme.hairline;
+    border-color: Theme.line;
+    background: root.primary ? Theme.accent-fill : (ta.has-hover && root.enabled ? Theme.panel : transparent);
+    opacity: root.enabled ? 1 : 0.5;
+
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        Label {
+            text: root.text;
+            color: root.primary ? Theme.on-accent : Theme.text;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// On/off switch with a 44 px hit area.
+export component Toggle inherits Rectangle {
+    in property <bool> checked;
+    callback toggled();
+    width: 52px;
+    height: Theme.touch;
+
+    Rectangle {
+        width: 40px;
+        height: 22px;
+        border-radius: Theme.radius;
+        border-width: Theme.hairline;
+        border-color: root.checked ? Theme.accent-fill : Theme.line;
+        background: root.checked ? Theme.accent-fill : transparent;
+        Rectangle {
+            width: 16px;
+            height: 16px;
+            y: 3px;
+            x: root.checked ? parent.width - self.width - 3px : 3px;
+            border-radius: 2px;
+            background: root.checked ? Theme.on-accent : Theme.muted;
+            animate x { duration: 120ms; }
+        }
+    }
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.toggled(); }
+    }
+}
+
+// Square checkbox with a 44 px hit area.
+export component Check inherits Rectangle {
+    in property <bool> checked;
+    callback toggled();
+    width: Theme.touch;
+    height: Theme.touch;
+
+    Rectangle {
+        width: 20px;
+        height: 20px;
+        border-radius: 2px;
+        border-width: Theme.hairline;
+        border-color: root.checked ? Theme.accent-fill : Theme.muted;
+        background: root.checked ? Theme.accent-fill : transparent;
+        Text {
+            text: "✓";
+            visible: root.checked;
+            color: Theme.on-accent;
+            font-size: 14px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.toggled(); }
+    }
+}

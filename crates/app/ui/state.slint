@@ -1,0 +1,61 @@
+// Data and callbacks shared between Rust and the dashboard.
+
+export struct TimerRow {
+    id: int,
+    name: string,
+    total: string,       // "4 MIN"
+    remaining: string,   // "3:59"
+    progress: float,     // 0 → 1
+    paused: bool,
+    finished: bool,
+}
+
+export struct AlarmRow {
+    id: int,
+    time: string,        // "7:00"
+    ampm: string,        // "AM"
+    days: string,        // "WEEKDAYS"
+    label: string,
+    enabled: bool,
+}
+
+export struct ReminderRow {
+    id: int,
+    text: string,
+    when: string,        // "TODAY 5:00 PM", "TOMORROW", ""
+    tag: string,         // "LOCAL" for timed reminders
+    done: bool,
+}
+
+export struct Marker {
+    pos: float,          // fraction of the day
+    kind: int,           // 0 alarm, 1 reminder, 2 timer
+}
+
+export global Dash {
+    in property <[TimerRow]> timers;
+    in property <[AlarmRow]> alarms;
+    in property <[ReminderRow]> reminders;
+    in property <[Marker]> markers;
+
+    // Briefing column facts
+    in property <string> next-alarm: "NONE";
+    in property <string> open-reminders: "0";
+
+    // Command bar
+    in-out property <string> command;
+    in property <string> result;
+    in property <bool> result-builtin;
+    in property <bool> can-undo;
+
+    callback submit(string);
+    callback undo();
+    callback activity();
+    callback timer-pause-toggle(int);
+    callback timer-remove(int);
+    callback alarm-toggle(int);
+    callback alarm-remove(int);
+    callback reminder-toggle(int);
+    callback reminder-remove(int);
+    callback play-briefing();
+}
