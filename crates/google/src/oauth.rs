@@ -155,6 +155,7 @@ pub async fn exchange_code(
     }
     let http = reqwest::ClientBuilder::new()
         .redirect(reqwest::redirect::Policy::none())
+        .timeout(Duration::from_secs(30))
         .build()
         .context("building OAuth HTTP client")?;
     let token = client
@@ -181,6 +182,7 @@ pub async fn refresh_access_token(
     }
     let http = reqwest::ClientBuilder::new()
         .redirect(reqwest::redirect::Policy::none())
+        .timeout(Duration::from_secs(30))
         .build()
         .context("building OAuth HTTP client")?;
     let token = client

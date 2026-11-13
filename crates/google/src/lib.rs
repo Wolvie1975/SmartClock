@@ -4,7 +4,7 @@ use anyhow::{bail, Context, Result};
 use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::{Client, StatusCode};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Duration};
 use url::Url;
 
 pub const CALENDAR_READ_SCOPE: &str = "https://www.googleapis.com/auth/calendar.readonly";
@@ -103,6 +103,7 @@ impl GoogleApi {
         let http = Client::builder()
             .user_agent(USER_AGENT)
             .redirect(reqwest::redirect::Policy::none())
+            .timeout(Duration::from_secs(30))
             .build()
             .context("building Google API HTTP client")?;
         Ok(Self {
