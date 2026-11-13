@@ -1,0 +1,9 @@
+import { Theme } from "../theme.slint";
+
+// Uppercase mono label. Write the text in uppercase in the source.
+export component Label inherits Text {
+    font-family: Theme.mono;
+    font-size: Theme.label;
+    letter-spacing: Theme.label-spacing;
+    color: Theme.muted;
+}

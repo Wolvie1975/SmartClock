@@ -1,0 +1,127 @@
+import { Theme } from "theme.slint";
+import { Label } from "widgets/label.slint";
+import { IdleScreen } from "idle.slint";
+import { Dashboard } from "dashboard.slint";
+
+export { Theme }
+
+export enum Screen { idle, dashboard, assistant, settings }
+export enum Overlay { none, timer, alarm }
+
+component Tab inherits Rectangle {
+    in property <string> text;
+    in property <bool> active;
+    callback clicked();
+    min-width: Theme.touch;
+    height: Theme.touch;
+    HorizontalLayout {
+        padding-left: 4px;
+        padding-right: 4px;
+        Label {
+            text: root.text;
+            vertical-alignment: center;
+            color: root.active ? Theme.accent-text : (ta.has-hover ? Theme.text : Theme.muted);
+        }
+    }
+    Rectangle {
+        y: parent.height - 2px;
+        height: 2px;
+        background: root.active ? Theme.accent-fill : transparent;
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
+export component AppWindow inherits Window {
+    title: "Smart Clock";
+    preferred-width: 1920px;
+    preferred-height: 1080px;
+    background: Theme.bg;
+    default-font-family: Theme.sans;
+
+    in-out property <Screen> screen: Screen.dashboard;
+    in-out property <Overlay> overlay: Overlay.none;
+
+    // Clock values pushed from Rust every tick
+    in property <string> time-hm: "12:00";
+    in property <string> time-ss: "00";
+    in property <string> ampm: "AM";
+    in property <string> date-label: "";
+    in property <string> tz-label: "";
+    in property <string> week-label: "";
+    in property <string> info-strip: "";
+    in property <float> day-progress: 0;
+
+    // Idle screen burn-in drift + brightness
+    in property <length> drift-x: 0;
+    in property <length> drift-y: 0;
+    in property <float> idle-brightness: 1.0;
+
+    callback activity();          // any pointer movement → reset idle timer
+    callback toggle-theme();
+
+    // Pointer activity anywhere in the window.
+    TouchArea {
+        changed mouse-x => { root.activity(); }
+        changed mouse-y => { root.activity(); }
+        pointer-event(e) => { root.activity(); }
+
+        if root.screen == Screen.idle: IdleScreen {
+            time-hm: root.time-hm;
+            time-ss: root.time-ss;
+            ampm: root.ampm;
+            date-label: root.date-label;
+            tz-label: root.tz-label;
+            week-label: root.week-label;
+            info-strip: root.info-strip;
+            day-progress: root.day-progress;
+            drift-x: root.drift-x;
+            drift-y: root.drift-y;
+            brightness: root.idle-brightness;
+        }
+
+        if root.screen != Screen.idle: VerticalLayout {
+            // Header: tabs + theme toggle
+            Rectangle {
+                height: 64px;
+                HorizontalLayout {
+                    padding-left: Theme.page-pad;
+                    padding-right: Theme.page-pad;
+                    spacing: 32px;
+                    alignment: start;
+                    Label { text: "SMART CLOCK"; color: Theme.text; vertical-alignment: center; }
+                    Rectangle { width: 32px; }
+                    Tab { text: "DASHBOARD"; active: root.screen == Screen.dashboard; clicked => { root.screen = Screen.dashboard; } }
+                    Tab { text: "ASSISTANT"; active: root.screen == Screen.assistant; clicked => { root.screen = Screen.assistant; } }
+                    Tab { text: "SETTINGS";  active: root.screen == Screen.settings;  clicked => { root.screen = Screen.settings; } }
+                }
+                Tab {
+                    x: parent.width - self.width - Theme.page-pad;
+                    y: (parent.height - self.height) / 2;
+                    text: Theme.dark ? "LIGHT" : "DARK";
+                    active: false;
+                    clicked => { root.toggle-theme(); }
+                }
+                Rectangle { y: parent.height - 1px; height: Theme.hairline; background: Theme.line; }
+            }
+
+            if root.screen == Screen.dashboard: Dashboard {
+                time-hm: root.time-hm;
+                time-ss: root.time-ss;
+                ampm: root.ampm;
+                date-label: root.date-label;
+                day-progress: root.day-progress;
+            }
+            if root.screen == Screen.assistant: Rectangle {
+                Label { text: "ASSISTANT — PHASE 3"; }
+            }
+            if root.screen == Screen.settings: Rectangle {
+                Label { text: "SETTINGS — LATER PHASES"; }
+            }
+        }
+    }
+
+    if root.overlay != Overlay.none: Rectangle {
+        background: Theme.bg;
+        // TimerTakeover / AlarmTakeover — ui/takeover.slint (Phase 2)
+    }
+}

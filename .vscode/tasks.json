@@ -1,0 +1,8 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "check", "type": "shell", "command": "cargo clippy --workspace --all-targets", "group": "build", "problemMatcher": ["$rustc"] },
+    { "label": "test", "type": "shell", "command": "cargo test --workspace", "group": "test", "problemMatcher": ["$rustc"] },
+    { "label": "run windowed", "type": "shell", "command": "cargo run -p smart-clock -- --windowed", "problemMatcher": ["$rustc"] }
+  ]
+}

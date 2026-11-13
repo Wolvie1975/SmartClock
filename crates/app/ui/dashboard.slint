@@ -1,0 +1,50 @@
+import { Theme } from "theme.slint";
+import { Label } from "widgets/label.slint";
+import { DayTimeline } from "widgets/timeline.slint";
+
+// Phase 1 placeholder: clock + timeline. Weather and the four columns arrive in Phase 2.
+export component Dashboard inherits Rectangle {
+    in property <string> time-hm;
+    in property <string> time-ss;
+    in property <string> ampm;
+    in property <string> date-label;
+    in property <float> day-progress;
+
+    background: Theme.bg;
+
+    VerticalLayout {
+        padding: Theme.page-pad;
+        padding-top: 24px;
+        spacing: 24px;
+
+        Label { text: root.date-label; color: Theme.text; }
+
+        HorizontalLayout {
+            spacing: 20px;
+            alignment: start;
+            Text {
+                text: root.time-hm;
+                font-family: Theme.mono;
+                font-size: Theme.clock-dashboard;
+                font-weight: 300;
+                color: Theme.text;
+            }
+            VerticalLayout {
+                alignment: center;
+                spacing: 12px;
+                Text { text: root.ampm; font-family: Theme.mono; font-size: 40px; color: Theme.accent-text; }
+                Text { text: root.time-ss; font-family: Theme.mono; font-size: 40px; font-weight: 300; color: Theme.muted; }
+            }
+        }
+
+        DayTimeline { progress: root.day-progress; }
+
+        Rectangle {
+            vertical-stretch: 1;
+            border-width: Theme.hairline;
+            border-color: Theme.line;
+            border-radius: Theme.radius;
+            Label { text: "TIMERS · ALARMS · REMINDERS · BRIEFING — PHASE 2"; }
+        }
+    }
+}

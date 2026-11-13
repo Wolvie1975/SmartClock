@@ -1,0 +1,35 @@
+// Fonts (OFL): JetBrains Mono static weights, Inter Tight variable font.
+import "fonts/JetBrainsMono-Light.ttf";
+import "fonts/JetBrainsMono-Regular.ttf";
+import "fonts/JetBrainsMono-Medium.ttf";
+import "fonts/JetBrainsMono-Bold.ttf";
+import "fonts/InterTight.ttf";
+
+export global Theme {
+    in-out property <bool> dark: true;
+
+    // Colors
+    out property <color> bg:          dark ? #0E0E0C : #C8C6B7;
+    out property <color> panel:       dark ? #151512 : #D2D0C2;   // inputs, command bar, filled timeline
+    out property <color> line:        dark ? #2E2E29 : #A8A696;   // hairlines
+    out property <color> text:        dark ? #EDEBE3 : #1A1A17;
+    out property <color> muted:       dark ? #9C9A8F : #47463F;
+    out property <color> accent-fill: dark ? #C6F36B : #A6CF4A;   // buttons, progress, markers
+    out property <color> accent-text: dark ? #C6F36B : #3A520C;   // accent-colored text/icons
+    out property <color> on-accent:   dark ? #0E0E0C : #1A1A17;   // text on accent fills
+
+    // Type
+    out property <string> mono: "JetBrains Mono";
+    out property <string> sans: "Inter Tight";
+    out property <length> clock-idle: 400px;       // weight 300
+    out property <length> clock-dashboard: 260px;  // weight 300
+    out property <length> countdown: 560px;        // timer takeover, weight 300
+    out property <length> label: 13px;             // uppercase mono, ~0.12em spacing
+    out property <length> label-spacing: 1.5px;
+
+    // Shape and layout
+    out property <length> radius: 4px;
+    out property <length> hairline: 1px;
+    out property <length> page-pad: 48px;
+    out property <length> touch: 44px;             // minimum target size
+}

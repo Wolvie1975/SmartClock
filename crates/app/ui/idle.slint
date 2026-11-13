@@ -1,0 +1,81 @@
+import { Theme } from "theme.slint";
+import { Label } from "widgets/label.slint";
+import { DayTimeline } from "widgets/timeline.slint";
+
+// Screensaver: huge clock, one info strip, day timeline. No controls.
+export component IdleScreen inherits Rectangle {
+    in property <string> time-hm;
+    in property <string> time-ss;
+    in property <string> ampm;
+    in property <string> date-label;
+    in property <string> tz-label;
+    in property <string> week-label;
+    in property <string> info-strip;
+    in property <float> day-progress;
+    in property <length> drift-x;   // burn-in offset
+    in property <length> drift-y;
+    in property <float> brightness: 1.0;
+
+    background: Theme.bg;
+
+    Rectangle {
+        x: drift-x;
+        y: drift-y;
+        opacity: root.brightness;
+
+        VerticalLayout {
+            padding: Theme.page-pad;
+            spacing: 0;
+
+            HorizontalLayout {
+                height: 24px;
+                Label { text: root.date-label; color: Theme.text; }
+                Rectangle { horizontal-stretch: 1; }
+                Label { text: root.tz-label; }
+                Rectangle { width: 32px; }
+                Label { text: root.week-label; }
+            }
+
+            Rectangle { vertical-stretch: 1; }
+
+            HorizontalLayout {
+                alignment: center;
+                spacing: 24px;
+                Text {
+                    text: root.time-hm;
+                    font-family: Theme.mono;
+                    font-size: Theme.clock-idle;
+                    font-weight: 300;
+                    color: Theme.text;
+                    vertical-alignment: center;
+                }
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 16px;
+                    Text {
+                        text: root.ampm;
+                        font-family: Theme.mono;
+                        font-size: 56px;
+                        font-weight: 400;
+                        color: Theme.accent-text;
+                    }
+                    Text {
+                        text: root.time-ss;
+                        font-family: Theme.mono;
+                        font-size: 56px;
+                        font-weight: 300;
+                        color: Theme.muted;
+                    }
+                }
+            }
+
+            Rectangle { vertical-stretch: 1; }
+
+            Rectangle { height: Theme.hairline; background: Theme.line; }
+            Rectangle { height: 20px; }
+            Label { text: root.info-strip; color: Theme.text; height: 20px; }
+            Rectangle { height: 28px; }
+            DayTimeline { progress: root.day-progress; }
+        }
+    }
+}

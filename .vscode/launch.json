@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Run smart-clock (windowed, debug)",
+      "cargo": { "args": ["build", "-p", "smart-clock"] },
+      "args": ["--windowed"],
+      "env": { "RUST_LOG": "smart_clock=debug,clock_core=debug" }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Run smart-clock (full screen)",
+      "cargo": { "args": ["build", "-p", "smart-clock"] },
+      "env": { "RUST_LOG": "info" }
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+import { Theme } from "../theme.slint";
+import { Label } from "label.slint";
+
+// 24-hour day bar, 12 AM → 12 AM. `progress` is the fraction of the day elapsed (0..1).
+export component DayTimeline inherits Rectangle {
+    in property <float> progress;
+    height: 56px;
+
+    property <[string]> ticks: ["12A", "3A", "6A", "9A", "12P", "3P", "6P", "9P", "12A"];
+
+    bar := Rectangle {
+        y: 0;
+        height: 20px;
+        border-width: Theme.hairline;
+        border-color: Theme.line;
+        border-radius: Theme.radius;
+        clip: true;
+
+        Rectangle {
+            x: 0;
+            width: parent.width * root.progress;
+            background: Theme.panel;
+        }
+        for t[i] in root.ticks: Rectangle {
+            x: parent.width * i / 8;
+            width: Theme.hairline;
+            background: Theme.line;
+        }
+        // now marker
+        Rectangle {
+            x: parent.width * root.progress - 1px;
+            width: 2px;
+            background: Theme.accent-fill;
+        }
+    }
+
+    for t[i] in root.ticks: Label {
+        y: bar.height + 10px;
+        x: i == 0 ? 0 : i == 8 ? root.width - self.width : root.width * i / 8 - self.width / 2;
+        text: t;
+    }
+}
