@@ -213,18 +213,27 @@ component Fact inherits Rectangle {
 // ---------------------------------------------------------------------------
 // Assistant answer card
 
+// Floats over the dashboard just above the command bar. Grows with the reply up
+// to `max-body`, then the reply scrolls inside the card.
 component AnswerCard inherits Rectangle {
+    in property <length> max-body: 480px;
+
     background: Theme.panel;
     border-width: Theme.hairline;
     border-color: Theme.line;
     border-radius: Theme.radius;
-    max-height: 300px;
-    clip: true;
+    drop-shadow-blur: 32px;
+    drop-shadow-offset-y: 8px;
+    drop-shadow-color: Theme.dark ? #000000b0 : #00000040;
+    height: layout.preferred-height;
 
-    VerticalLayout {
-        padding: 18px;
+    // Swallow clicks so nothing underneath the card reacts.
+    TouchArea { }
+
+    layout := VerticalLayout {
+        padding: 20px;
         padding-top: 10px;
-        spacing: 10px;
+        spacing: 12px;
 
         HorizontalLayout {
             spacing: 16px;
@@ -249,17 +258,33 @@ component AnswerCard inherits Rectangle {
                 }
             }
         }
-        if Dash.answer-actions != "": Label {
-            text: Dash.answer-actions;
-            color: Theme.text;
-            wrap: word-wrap;
+        Rectangle { height: Theme.hairline; background: Theme.line; }
+
+        fl := Flickable {
+            height: min(body.preferred-height, root.max-body);
+            content-height: body.preferred-height;
+            body := VerticalLayout {
+                width: fl.width;
+                spacing: 12px;
+                if Dash.answer-actions != "": Label {
+                    text: Dash.answer-actions;
+                    color: Theme.text;
+                    wrap: word-wrap;
+                }
+                if Dash.answer-text != "": Text {
+                    text: Dash.answer-text;
+                    font-family: Theme.sans;
+                    font-size: 20px;
+                    color: Theme.text;
+                    wrap: word-wrap;
+                }
+                if Dash.answer-text == "" && Dash.answer-actions == "": Label { text: "…"; }
+            }
         }
-        if Dash.answer-text != "": Text {
-            text: Dash.answer-text;
-            font-family: Theme.sans;
-            font-size: 19px;
-            color: Theme.text;
-            wrap: word-wrap;
+        // Scroll hint when the reply is longer than the card.
+        if body.preferred-height > root.max-body: Label {
+            text: fl.content-y < -(body.preferred-height - root.max-body - 4px) ? "END" : "SCROLL FOR MORE ↓";
+            horizontal-alignment: right;
         }
     }
 }
@@ -465,7 +490,14 @@ export component Dashboard inherits Rectangle {
             }
         }
 
-        if Dash.answer-visible: AnswerCard { }
         bar := CommandBar { }
+    }
+
+    // Assistant reply: a pop-over above the command bar, not part of the layout.
+    if Dash.answer-visible: AnswerCard {
+        x: Theme.page-pad;
+        width: root.width - 2 * Theme.page-pad;
+        max-body: root.height * 0.6;
+        y: bar.y - self.height - 12px;
     }
 }
