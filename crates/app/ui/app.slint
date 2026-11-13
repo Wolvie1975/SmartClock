@@ -2,9 +2,10 @@ import { Theme } from "theme.slint";
 import { Label } from "widgets/label.slint";
 import { IdleScreen } from "idle.slint";
 import { Dashboard } from "dashboard.slint";
+import { TimerTakeover, AlarmTakeover } from "takeover.slint";
 
 export { Theme }
-export { Dash, TimerRow, AlarmRow, ReminderRow, Marker } from "state.slint";
+export { Dash, TimerRow, AlarmRow, ReminderRow, Marker, Ring, AlarmPhase } from "state.slint";
 
 export enum Screen { idle, dashboard, assistant, settings }
 export enum Overlay { none, timer, alarm }
@@ -121,8 +122,12 @@ export component AppWindow inherits Window {
         }
     }
 
+    // Overlays cover everything, including the idle screen, and swallow input
+    // so nothing underneath can be clicked.
     if root.overlay != Overlay.none: Rectangle {
         background: Theme.bg;
-        // TimerTakeover / AlarmTakeover — ui/takeover.slint (Phase 2)
+        TouchArea { }
+        if root.overlay == Overlay.timer: TimerTakeover { }
+        if root.overlay == Overlay.alarm: AlarmTakeover { }
     }
 }

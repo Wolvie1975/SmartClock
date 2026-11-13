@@ -9,6 +9,8 @@ use std::{
 
 mod dashboard;
 mod inhibit;
+mod ringing;
+mod sound;
 
 slint::include_modules!();
 
@@ -77,6 +79,7 @@ fn main() -> anyhow::Result<()> {
         let a = activity.clone();
         move || a()
     });
+    let ringer = ringing::Ringer::install(&ui, store.clone(), dash.clone());
 
     {
         let weak = ui.as_weak();
@@ -111,6 +114,7 @@ fn main() -> anyhow::Result<()> {
             ui.set_week_label(format!("WEEK {}", now.iso_week().week()).into());
             ui.set_day_progress(now.num_seconds_from_midnight() as f32 / 86_400.0);
             dash.tick(&ui);
+            ringer.tick(&ui);
             ui.set_info_strip(dash.info_strip().into());
 
             let (dx, dy) = DRIFT[(now.minute() as usize) % DRIFT.len()];

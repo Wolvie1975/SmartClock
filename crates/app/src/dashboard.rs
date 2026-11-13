@@ -159,6 +159,11 @@ impl DashController {
         Ok(())
     }
 
+    /// A one-line message in the command bar (no UNDO).
+    pub fn notify(&self, ui: &AppWindow, text: &str) {
+        self.show_result(ui, text, false, false);
+    }
+
     fn offer_undo(&self, ui: &AppWindow, msg: &str, undo: Undo) {
         *self.undo.borrow_mut() = Some(undo);
         self.show_result(ui, msg, false, true);

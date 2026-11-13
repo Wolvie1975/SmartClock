@@ -248,6 +248,8 @@ Type: JetBrains Mono for numerals and labels, Inter Tight for body text. Clock s
 
 **Alarm ringing:** current time in the accent color, the alarm label, a volume bar that ramps from 20% to 100% over 30 s, and the elapsed ringing time. Buttons are SNOOZE · 9 MIN (the snooze length comes from Settings) and DISMISS. The background alternates bg/panel once per second. Snoozed shows a countdown and "rings again at…". Dismissed shows "Good morning", PLAY BRIEFING (manual) and DASHBOARD →.
 
+**Missed alarms:** an alarm found more than 5 minutes late (app closed or laptop asleep) is skipped and logged rather than rung. Catch-up after sleep is Phase 6.
+
 **Screen awake:** while the app runs, `inhibit.rs` calls `org.gnome.SessionManager.Inhibit("smart-clock", 0, "Clock display", 8)` (8 = inhibit idle) and keeps the cookie. Dropping the guard calls `Uninhibit`; if the process dies, GNOME drops the inhibit when the D-Bus connection closes.
 
 **Burn-in:** on the idle screen, shift the whole layout by a few pixels each minute using the offset cycle (0,0) → (3,2) → (−2,3) → (−3,−1) → (2,−3) → (1,1). The brightness setting runs from 30% to 100%.
@@ -516,8 +518,8 @@ X-GNOME-Autostart-enabled=true
 - [x] SQLite schema and repository layer in `clock-core` (section 8); `actions::apply` + UNDO shared by every input path
 - [x] Command parser with tests (section 9)
 - [x] Dashboard: four columns, command bar, day timeline markers
-- [ ] Timer takeover overlay and alarm ringing overlay (section 7), with sounds through `cpal`
-- [ ] Snooze, auto-stop and volume ramp from Settings → Alarm sounds
+- [x] Timer takeover overlay and alarm ringing overlay (section 7), with sounds through `cpal` (synthesized chime/beeps for now)
+- [x] Snooze, auto-stop and volume ramp (settings keys `snooze_min` 9, `autostop_min` 10, `ramp` true, `volume` 80; the Settings screen comes later)
 - [ ] Weather panel from Open-Meteo: now, 8-hour strip, 5-day range bars
 
 **Done when:** everything on the dashboard works offline with no AI and no Google.

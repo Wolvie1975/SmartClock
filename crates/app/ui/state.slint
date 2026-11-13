@@ -59,3 +59,39 @@ export global Dash {
     callback reminder-remove(int);
     callback play-briefing();
 }
+
+// Timer takeover + alarm ringing overlays.
+export enum AlarmPhase { ringing, snoozed, dismissed }
+
+export global Ring {
+    // Timer takeover
+    in property <string> timer-name;
+    in property <string> timer-count;   // "7"
+    in property <int> timer-blocks;     // 0..10 blocks left
+    in property <bool> timer-up;        // TIME'S UP
+
+    // Alarm
+    in property <AlarmPhase> alarm-phase;
+    in property <string> alarm-label;       // "ALARM · GYM"
+    in property <string> alarm-time;        // "7:00"
+    in property <string> alarm-ampm;
+    in property <float> alarm-volume;       // 0..1, ramps 20% → 100%
+    in property <string> alarm-elapsed;     // "RINGING 0:42"
+    in property <string> snooze-label;      // "SNOOZE · 9 MIN"
+    in property <string> snooze-countdown;  // "8:59"
+    in property <string> snooze-again;      // "RINGS AGAIN AT 7:09 AM"
+    in property <string> greeting;          // "GOOD MORNING"
+    in property <string> dismissed-note;    // date, or "STOPPED AFTER 10 MIN"
+
+    // Flips once per second: TIME'S UP pulse, ringing background
+    in property <bool> pulse;
+
+    callback timer-add-minute();
+    callback timer-stop();
+    callback timer-restart();
+    callback timer-dismiss();
+    callback alarm-snooze();
+    callback alarm-dismiss();
+    callback alarm-close();
+    callback play-briefing();
+}

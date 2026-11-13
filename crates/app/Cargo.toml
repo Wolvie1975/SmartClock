@@ -8,6 +8,7 @@ license.workspace = true
 anyhow = "1.0.104"
 chrono = "0.4.45"
 clock-core = { version = "0.1.0", path = "../clock-core" }
+cpal = "0.18.2"
 slint = "1.18.1"
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "time", "sync"] }
 tracing = "0.1.44"

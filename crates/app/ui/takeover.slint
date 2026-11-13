@@ -1,0 +1,248 @@
+import { Theme } from "theme.slint";
+import { Label } from "widgets/label.slint";
+import { Ring, AlarmPhase } from "state.slint";
+
+// Large takeover button: 88 px tall.
+component BigButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary: false;
+    in property <color> ink: Theme.text;     // for use on an accent background
+    callback clicked();
+
+    min-width: 240px;
+    height: 88px;
+    border-radius: Theme.radius;
+    border-width: root.primary ? 0 : Theme.hairline;
+    border-color: root.ink;
+    background: root.primary ? Theme.accent-fill : (ta.has-hover ? Theme.panel : transparent);
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { root.clicked(); }
+
+    HorizontalLayout {
+        padding-left: 32px;
+        padding-right: 32px;
+        Text {
+            text: root.text;
+            font-family: Theme.mono;
+            font-size: 22px;
+            font-weight: 500;
+            letter-spacing: 2px;
+            color: root.primary ? Theme.on-accent : root.ink;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component TimerTakeover inherits Rectangle {
+    // TIME'S UP pulses between accent and background once per second.
+    property <bool> lit: Ring.timer-up && Ring.pulse;
+    property <color> ink: root.lit ? Theme.on-accent : Theme.text;
+    background: root.lit ? Theme.accent-fill : Theme.bg;
+
+    VerticalLayout {
+        alignment: center;
+        spacing: 32px;
+        padding: Theme.page-pad;
+
+        Text {
+            text: Ring.timer-name;
+            font-family: Theme.mono;
+            font-size: 28px;
+            letter-spacing: 4px;
+            color: root.lit ? Theme.on-accent : Theme.muted;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: Ring.timer-up ? "TIME'S UP" : Ring.timer-count;
+            accessible-role: text;
+            accessible-label: Ring.timer-up ? Ring.timer-name + ": time's up" : Ring.timer-name + ": " + Ring.timer-count + " seconds";
+            font-family: Theme.mono;
+            font-size: Ring.timer-up ? 220px : Theme.countdown;
+            font-weight: 300;
+            color: Ring.timer-up ? root.ink : Theme.accent-text;
+            horizontal-alignment: center;
+            height: Theme.countdown * 1.1;
+            vertical-alignment: center;
+        }
+
+        // Ten blocks, one empties per second.
+        HorizontalLayout {
+            alignment: center;
+            spacing: 12px;
+            for i in 10: Rectangle {
+                width: 72px;
+                height: 20px;
+                border-radius: 2px;
+                border-width: Theme.hairline;
+                border-color: root.ink;
+                background: i < Ring.timer-blocks ? Theme.accent-fill : transparent;
+            }
+        }
+
+        HorizontalLayout {
+            alignment: center;
+            spacing: 24px;
+            BigButton {
+                text: "+1 MIN";
+                ink: root.ink;
+                clicked => { Ring.timer-add-minute(); }
+            }
+            if !Ring.timer-up: BigButton {
+                text: "STOP";
+                primary: true;
+                clicked => { Ring.timer-stop(); }
+            }
+            if Ring.timer-up: BigButton {
+                text: "RESTART";
+                ink: root.ink;
+                clicked => { Ring.timer-restart(); }
+            }
+            if Ring.timer-up: BigButton {
+                text: "DISMISS";
+                ink: root.ink;
+                primary: !root.lit;
+                clicked => { Ring.timer-dismiss(); }
+            }
+        }
+    }
+}
+
+export component AlarmTakeover inherits Rectangle {
+    background: Ring.alarm-phase == AlarmPhase.ringing && Ring.pulse ? Theme.panel : Theme.bg;
+
+    // Ringing
+    if Ring.alarm-phase == AlarmPhase.ringing: VerticalLayout {
+        alignment: center;
+        spacing: 28px;
+        padding: Theme.page-pad;
+
+        Label {
+            text: Ring.alarm-label;
+            font-size: 22px;
+            letter-spacing: 4px;
+            color: Theme.text;
+            horizontal-alignment: center;
+        }
+        HorizontalLayout {
+            alignment: center;
+            spacing: 24px;
+            Text {
+                text: Ring.alarm-time;
+                accessible-role: text;
+                accessible-label: "Alarm ringing, " + Ring.alarm-time + " " + Ring.alarm-ampm;
+                font-family: Theme.mono;
+                font-size: Theme.clock-idle;
+                font-weight: 300;
+                color: Theme.accent-text;
+            }
+            VerticalLayout {
+                alignment: center;
+                Text { text: Ring.alarm-ampm; font-family: Theme.mono; font-size: 56px; color: Theme.accent-text; }
+            }
+        }
+        // Volume bar + elapsed ringing time
+        HorizontalLayout {
+            alignment: center;
+            spacing: 20px;
+            Label { text: "VOL"; vertical-alignment: center; }
+            Rectangle {
+                width: 480px;
+                height: 12px;
+                border-radius: 2px;
+                border-width: Theme.hairline;
+                border-color: Theme.line;
+                Rectangle {
+                    x: 0;
+                    width: parent.width * Ring.alarm-volume;
+                    border-radius: 2px;
+                    background: Theme.accent-fill;
+                }
+            }
+            Label { text: Ring.alarm-elapsed; vertical-alignment: center; min-width: 140px; }
+        }
+        Rectangle { height: 12px; }
+        HorizontalLayout {
+            alignment: center;
+            spacing: 24px;
+            BigButton {
+                text: Ring.snooze-label;
+                primary: true;
+                min-width: 420px;
+                clicked => { Ring.alarm-snooze(); }
+            }
+            BigButton {
+                text: "DISMISS";
+                clicked => { Ring.alarm-dismiss(); }
+            }
+        }
+    }
+
+    // Snoozed
+    if Ring.alarm-phase == AlarmPhase.snoozed: VerticalLayout {
+        alignment: center;
+        spacing: 28px;
+        padding: Theme.page-pad;
+
+        Label { text: "SNOOZED · " + Ring.alarm-label; font-size: 22px; letter-spacing: 4px; horizontal-alignment: center; }
+        Text {
+            text: Ring.snooze-countdown;
+            font-family: Theme.mono;
+            font-size: 300px;
+            font-weight: 300;
+            color: Theme.text;
+            horizontal-alignment: center;
+        }
+        Label { text: Ring.snooze-again; font-size: 20px; color: Theme.text; horizontal-alignment: center; }
+        Rectangle { height: 12px; }
+        HorizontalLayout {
+            alignment: center;
+            spacing: 24px;
+            BigButton {
+                text: "DISMISS";
+                clicked => { Ring.alarm-dismiss(); }
+            }
+            BigButton {
+                text: "DASHBOARD →";
+                clicked => { Ring.alarm-close(); }
+            }
+        }
+    }
+
+    // Dismissed
+    if Ring.alarm-phase == AlarmPhase.dismissed: VerticalLayout {
+        alignment: center;
+        spacing: 28px;
+        padding: Theme.page-pad;
+
+        Text {
+            text: Ring.greeting;
+            font-family: Theme.sans;
+            font-size: 120px;
+            font-weight: 500;
+            color: Theme.text;
+            horizontal-alignment: center;
+        }
+        Label { text: Ring.dismissed-note; font-size: 20px; horizontal-alignment: center; }
+        Rectangle { height: 12px; }
+        HorizontalLayout {
+            alignment: center;
+            spacing: 24px;
+            BigButton {
+                text: "PLAY BRIEFING";
+                primary: true;
+                clicked => { Ring.play-briefing(); }
+            }
+            BigButton {
+                text: "DASHBOARD →";
+                clicked => { Ring.alarm-close(); }
+            }
+        }
+    }
+}
