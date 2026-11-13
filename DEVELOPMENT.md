@@ -326,19 +326,30 @@ The dashboard command bar and the assistant both run input through this parser f
 | `cancel tea timer`, `stop all timers` | Remove timers |
 | `brief me` | Play the briefing |
 
+Also understood: `set a 5 minute timer`, `remind me in 20 minutes to …`, `remind me to … tomorrow at 9`, `alarm 7am mon wed fri`, `alarm 5:30am gym weekdays` (label "Gym"), `noon` / `midnight`, `cancel timer` (latest).
+
 ```rust
 // crates/clock-core/src/command.rs
 pub enum Command {
     StartTimer { name: Option<String>, duration: std::time::Duration },
-    AddAlarm   { time: chrono::NaiveTime, days: u8, label: Option<String> },
-    AddReminder{ text: String, date: Option<chrono::NaiveDate>, time: Option<chrono::NaiveTime> },
-    CancelTimer{ name: Option<String> },
+    AddAlarm   { time: NaiveTime, days: u8, label: Option<String> },   // days: Mon=1 … Sun=64, 0 = one-off
+    AddReminder{ text: String, date: Option<NaiveDate>, time: Option<NaiveTime> },
+    CancelTimer{ target: TimerTarget },                                // Latest | Named(String) | All
     Brief,
 }
 
-/// Returns None when the text isn't a clock command → send it to the AI router.
-pub fn parse(input: &str, now: chrono::DateTime<chrono::Local>) -> Option<Command>;
+/// `now` is local wall-clock time (pass `Local::now().naive_local()`), which keeps tests
+/// independent of the machine's time zone. None → send the text to the AI router.
+pub fn parse(input: &str, now: NaiveDateTime) -> Option<Command>;
 ```
+
+**Time rules** (all covered by tests):
+- An hour with no AM/PM means the next time that o'clock comes round: "at 5" is 5 AM before 5 AM, otherwise 5 PM, otherwise tomorrow 5 AM. "12am" is midnight.
+- On an explicit future date ("tomorrow at 3"), 7–11 → AM; 12 and 1–6 → PM.
+- A repeating alarm ("alarm 6:45 weekdays") reads 4–11 as AM; 12 and 1–3 as PM.
+- `07:00`, `0:30` and 13–23 are 24-hour.
+- "on friday" said on a Friday means next week.
+- Input starting with a question word ("what is a 5 minute timer") is never a timer.
 
 > **Test first.** This parser is pure and easy to test. Write the table above as `#[test]` cases before you implement it, including the edge cases: "at 5" means the next 5 o'clock (5 PM if it's already past 5 AM), and "12am" means midnight.
 
@@ -503,7 +514,7 @@ X-GNOME-Autostart-enabled=true
 
 ### Phase 2: Timers, alarms, reminders (local)
 - [ ] SQLite schema and repository layer in `clock-core` (section 8)
-- [ ] Command parser with tests (section 9)
+- [x] Command parser with tests (section 9)
 - [ ] Dashboard: four columns, command bar, day timeline markers
 - [ ] Timer takeover overlay and alarm ringing overlay (section 7), with sounds through `cpal`
 - [ ] Snooze, auto-stop and volume ramp from Settings → Alarm sounds

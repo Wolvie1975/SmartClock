@@ -55,7 +55,9 @@ impl Store {
     }
 
     fn migrate(&mut self) -> Result<()> {
-        let version: i64 = self.conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+        let version: i64 = self
+            .conn
+            .pragma_query_value(None, "user_version", |r| r.get(0))?;
         let tx = self.conn.transaction()?;
         for (i, sql) in MIGRATIONS.iter().enumerate().skip(version as usize) {
             tracing::info!(migration = i + 1, "applying migration");
@@ -69,7 +71,9 @@ impl Store {
     pub fn get_setting(&self, key: &str) -> Result<Option<String>> {
         Ok(self
             .conn
-            .query_row("SELECT value FROM settings WHERE key = ?1", [key], |r| r.get(0))
+            .query_row("SELECT value FROM settings WHERE key = ?1", [key], |r| {
+                r.get(0)
+            })
             .optional()?)
     }
 
