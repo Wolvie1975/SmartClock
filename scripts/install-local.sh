@@ -34,4 +34,4 @@ chmod 644 "$DESKTOP"
 refresh
 
 echo "Installed Smart Clock. Open it from the app menu (search \"Smart Clock\")."
-echo "Right-click its icon for \"Open in a Window\". Quit with Alt+F4."
+echo "Right-click its icon for \"Open in a Window\". Quit with CLOSE (top right) or Alt+F4."

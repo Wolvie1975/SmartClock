@@ -61,6 +61,10 @@ export component AppWindow inherits Window {
 
     callback activity();          // any pointer movement → reset idle timer
     callback toggle-theme();
+    callback quit();
+
+    // CLOSE asks once before quitting, because alarms stop when the app closes.
+    property <bool> confirm-close: false;
 
     // Pointer activity anywhere in the window.
     TouchArea {
@@ -103,6 +107,38 @@ export component AppWindow inherits Window {
                             text: Theme.dark ? "LIGHT" : "DARK";
                             active: false;
                             clicked => { root.toggle-theme(); }
+                        }
+                    }
+                    if !root.confirm-close: VerticalLayout {
+                        alignment: center;
+                        Tab {
+                            text: "CLOSE";
+                            active: false;
+                            clicked => { root.confirm-close = true; }
+                        }
+                    }
+                    if root.confirm-close: HorizontalLayout {
+                        spacing: 20px;
+                        Label {
+                            text: "CLOSE THE CLOCK? ALARMS WON'T RING WHILE IT'S CLOSED";
+                            color: Theme.accent-text;
+                            vertical-alignment: center;
+                        }
+                        VerticalLayout {
+                            alignment: center;
+                            Tab {
+                                text: "CLOSE";
+                                active: true;
+                                clicked => { root.quit(); }
+                            }
+                        }
+                        VerticalLayout {
+                            alignment: center;
+                            Tab {
+                                text: "CANCEL";
+                                active: false;
+                                clicked => { root.confirm-close = false; }
+                            }
                         }
                     }
                 }

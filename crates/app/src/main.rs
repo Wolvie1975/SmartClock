@@ -113,6 +113,13 @@ fn main() -> anyhow::Result<()> {
     {
         let weak = ui.as_weak();
         let store = store.clone();
+        // CLOSE in the header (after its confirm step). Leaving the event loop
+        // ends `ui.run()`, so the idle inhibit and any sound are released normally.
+        ui.on_quit(|| {
+            if let Err(e) = slint::quit_event_loop() {
+                tracing::error!("quit failed: {e}");
+            }
+        });
         ui.on_toggle_theme(move || {
             let Some(ui) = weak.upgrade() else { return };
             let theme = ui.global::<Theme>();

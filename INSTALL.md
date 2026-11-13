@@ -46,7 +46,7 @@ This builds a release copy and adds **Smart Clock** to the GNOME app menu with i
 
 - Open it from the app menu (press Super and type "Smart Clock"). It opens full screen.
 - Right-click its icon for **Open in a Window**.
-- Quit with **Alt+F4**.
+- Quit with **CLOSE** at the top right (it asks once, because alarms stop while the clock is closed), or Alt+F4.
 - Remove it with `scripts/install-local.sh --uninstall`. That keeps your alarms, reminders and settings.
 
 It installs `~/.local/bin/smart-clock`, `~/.local/share/applications/smart-clock.desktop` and the icon in `~/.local/share/icons/hicolor/scalable/apps/`.
