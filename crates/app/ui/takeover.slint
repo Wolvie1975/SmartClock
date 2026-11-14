@@ -9,8 +9,8 @@ component BigButton inherits Rectangle {
     in property <color> ink: Theme.text;     // for use on an accent background
     callback clicked();
 
-    min-width: 240px;
-    height: 88px;
+    min-width: 240 * Theme.u;
+    height: 88 * Theme.u;
     border-radius: Theme.radius;
     border-width: root.primary ? 0 : Theme.hairline;
     border-color: root.ink;
@@ -20,14 +20,14 @@ component BigButton inherits Rectangle {
     accessible-action-default => { root.clicked(); }
 
     HorizontalLayout {
-        padding-left: 32px;
-        padding-right: 32px;
+        padding-left: 32 * Theme.u;
+        padding-right: 32 * Theme.u;
         Text {
             text: root.text;
             font-family: Theme.mono;
-            font-size: 22px;
+            font-size: 22 * Theme.u;
             font-weight: 500;
-            letter-spacing: 2px;
+            letter-spacing: 2 * Theme.u;
             color: root.primary ? Theme.on-accent : root.ink;
             vertical-alignment: center;
             horizontal-alignment: center;
@@ -47,14 +47,14 @@ export component TimerTakeover inherits Rectangle {
 
     VerticalLayout {
         alignment: center;
-        spacing: 32px;
+        spacing: 32 * Theme.u;
         padding: Theme.page-pad;
 
         Text {
             text: Ring.timer-name;
             font-family: Theme.mono;
-            font-size: 28px;
-            letter-spacing: 4px;
+            font-size: 28 * Theme.u;
+            letter-spacing: 4 * Theme.u;
             color: root.lit ? Theme.on-accent : Theme.muted;
             horizontal-alignment: center;
         }
@@ -64,7 +64,7 @@ export component TimerTakeover inherits Rectangle {
             accessible-role: text;
             accessible-label: Ring.timer-up ? Ring.timer-name + ": time's up" : Ring.timer-name + ": " + Ring.timer-count + " seconds";
             font-family: Theme.mono;
-            font-size: Ring.timer-up ? 220px : Theme.countdown;
+            font-size: Ring.timer-up ? 220 * Theme.u : Theme.countdown;
             font-weight: 300;
             color: Ring.timer-up ? root.ink : Theme.accent-text;
             horizontal-alignment: center;
@@ -75,11 +75,11 @@ export component TimerTakeover inherits Rectangle {
         // Ten blocks, one empties per second.
         HorizontalLayout {
             alignment: center;
-            spacing: 12px;
+            spacing: 12 * Theme.u;
             for i in 10: Rectangle {
-                width: 72px;
-                height: 20px;
-                border-radius: 2px;
+                width: 72 * Theme.u;
+                height: 20 * Theme.u;
+                border-radius: 2 * Theme.u;
                 border-width: Theme.hairline;
                 border-color: root.ink;
                 background: i < Ring.timer-blocks ? Theme.accent-fill : transparent;
@@ -88,7 +88,7 @@ export component TimerTakeover inherits Rectangle {
 
         HorizontalLayout {
             alignment: center;
-            spacing: 24px;
+            spacing: 24 * Theme.u;
             BigButton {
                 text: "+1 MIN";
                 ink: root.ink;
@@ -120,61 +120,61 @@ export component AlarmTakeover inherits Rectangle {
     // Ringing
     if Ring.alarm-phase == AlarmPhase.ringing: VerticalLayout {
         alignment: center;
-        spacing: 28px;
+        spacing: 28 * Theme.u;
         padding: Theme.page-pad;
 
         Label {
             text: Ring.alarm-label;
-            font-size: 22px;
-            letter-spacing: 4px;
+            font-size: 22 * Theme.u;
+            letter-spacing: 4 * Theme.u;
             color: Theme.text;
             horizontal-alignment: center;
         }
         HorizontalLayout {
             alignment: center;
-            spacing: 24px;
+            spacing: 24 * Theme.u;
             Text {
                 text: Ring.alarm-time;
                 accessible-role: text;
                 accessible-label: "Alarm ringing, " + Ring.alarm-time + " " + Ring.alarm-ampm;
                 font-family: Theme.mono;
-                font-size: Theme.clock-idle;
+                font-size: Theme.clock-alarm;
                 font-weight: 300;
                 color: Theme.accent-text;
             }
             VerticalLayout {
                 alignment: center;
-                Text { text: Ring.alarm-ampm; font-family: Theme.mono; font-size: 56px; color: Theme.accent-text; }
+                Text { text: Ring.alarm-ampm; font-family: Theme.mono; font-size: 56 * Theme.u; color: Theme.accent-text; }
             }
         }
         // Volume bar + elapsed ringing time
         HorizontalLayout {
             alignment: center;
-            spacing: 20px;
+            spacing: 20 * Theme.u;
             Label { text: "VOL"; vertical-alignment: center; }
             Rectangle {
-                width: 480px;
-                height: 12px;
-                border-radius: 2px;
+                width: 480 * Theme.u;
+                height: 12 * Theme.u;
+                border-radius: 2 * Theme.u;
                 border-width: Theme.hairline;
                 border-color: Theme.line;
                 Rectangle {
                     x: 0;
                     width: parent.width * Ring.alarm-volume;
-                    border-radius: 2px;
+                    border-radius: 2 * Theme.u;
                     background: Theme.accent-fill;
                 }
             }
-            Label { text: Ring.alarm-elapsed; vertical-alignment: center; min-width: 140px; }
+            Label { text: Ring.alarm-elapsed; vertical-alignment: center; min-width: 140 * Theme.u; }
         }
-        Rectangle { height: 12px; }
+        Rectangle { height: 12 * Theme.u; }
         HorizontalLayout {
             alignment: center;
-            spacing: 24px;
+            spacing: 24 * Theme.u;
             BigButton {
                 text: Ring.snooze-label;
                 primary: true;
-                min-width: 420px;
+                min-width: 420 * Theme.u;
                 clicked => { Ring.alarm-snooze(); }
             }
             BigButton {
@@ -187,23 +187,23 @@ export component AlarmTakeover inherits Rectangle {
     // Snoozed
     if Ring.alarm-phase == AlarmPhase.snoozed: VerticalLayout {
         alignment: center;
-        spacing: 28px;
+        spacing: 28 * Theme.u;
         padding: Theme.page-pad;
 
-        Label { text: "SNOOZED · " + Ring.alarm-label; font-size: 22px; letter-spacing: 4px; horizontal-alignment: center; }
+        Label { text: "SNOOZED · " + Ring.alarm-label; font-size: 22 * Theme.u; letter-spacing: 4 * Theme.u; horizontal-alignment: center; }
         Text {
             text: Ring.snooze-countdown;
             font-family: Theme.mono;
-            font-size: 300px;
+            font-size: 300 * Theme.u;
             font-weight: 300;
             color: Theme.text;
             horizontal-alignment: center;
         }
-        Label { text: Ring.snooze-again; font-size: 20px; color: Theme.text; horizontal-alignment: center; }
-        Rectangle { height: 12px; }
+        Label { text: Ring.snooze-again; font-size: 20 * Theme.u; color: Theme.text; horizontal-alignment: center; }
+        Rectangle { height: 12 * Theme.u; }
         HorizontalLayout {
             alignment: center;
-            spacing: 24px;
+            spacing: 24 * Theme.u;
             BigButton {
                 text: "DISMISS";
                 clicked => { Ring.alarm-dismiss(); }
@@ -218,19 +218,19 @@ export component AlarmTakeover inherits Rectangle {
     // Dismissed
     if Ring.alarm-phase == AlarmPhase.dismissed: VerticalLayout {
         alignment: center;
-        spacing: 28px;
+        spacing: 28 * Theme.u;
         padding: Theme.page-pad;
 
         Text {
             text: Ring.greeting;
             font-family: Theme.sans;
-            font-size: 120px;
+            font-size: 120 * Theme.u;
             font-weight: 500;
             color: Theme.text;
             horizontal-alignment: center;
         }
-        Label { text: Ring.dismissed-note; font-size: 20px; horizontal-alignment: center; }
-        Rectangle { height: 12px; }
+        Label { text: Ring.dismissed-note; font-size: 20 * Theme.u; horizontal-alignment: center; }
+        Rectangle { height: 12 * Theme.u; }
         HorizontalLayout {
             alignment: center;
             BigButton {

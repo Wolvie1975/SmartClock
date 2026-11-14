@@ -1,5 +1,6 @@
 import { Theme } from "theme.slint";
 import { Label } from "widgets/label.slint";
+import { ClockDisplay } from "widgets/clock-faces.slint";
 import { DayTimeline } from "widgets/timeline.slint";
 import { Dash } from "state.slint";
 
@@ -8,6 +9,18 @@ export component IdleScreen inherits Rectangle {
     in property <string> time-hm;
     in property <string> time-ss;
     in property <string> ampm;
+    in property <string> clock-face;
+    in property <string> hour-label;
+    in property <string> minute-label;
+    in property <string> hour-tens;
+    in property <string> hour-ones;
+    in property <string> minute-tens;
+    in property <string> minute-ones;
+    in property <string> previous-minute;
+    in property <string> next-minute;
+    in property <int> hour;
+    in property <int> minute;
+    in property <int> second;
     in property <string> date-label;
     in property <string> tz-label;
     in property <string> week-label;
@@ -19,6 +32,9 @@ export component IdleScreen inherits Rectangle {
 
     background: Theme.bg;
 
+    property <length> idle-clock-size:
+        min(Theme.clock-idle, (root.width - 2 * Theme.page-pad) / 3.5);
+
     Rectangle {
         x: drift-x;
         y: drift-y;
@@ -29,11 +45,11 @@ export component IdleScreen inherits Rectangle {
             spacing: 0;
 
             HorizontalLayout {
-                height: 24px;
+                height: 24 * Theme.u;
                 Label { text: root.date-label; color: Theme.text; }
                 Rectangle { horizontal-stretch: 1; }
                 Label { text: root.tz-label; }
-                Rectangle { width: 32px; }
+                Rectangle { width: 32 * Theme.u; }
                 Label { text: root.week-label; }
             }
 
@@ -41,41 +57,32 @@ export component IdleScreen inherits Rectangle {
 
             HorizontalLayout {
                 alignment: center;
-                spacing: 24px;
-                Text {
-                    text: root.time-hm;
-                    font-family: Theme.mono;
-                    font-size: Theme.clock-idle;
-                    font-weight: 300;
-                    color: Theme.text;
-                    vertical-alignment: center;
-                }
-                VerticalLayout {
-                    alignment: center;
-                    spacing: 16px;
-                    Text {
-                        text: root.ampm;
-                        font-family: Theme.mono;
-                        font-size: 56px;
-                        font-weight: 400;
-                        color: Theme.accent-text;
-                    }
-                    Text {
-                        text: root.time-ss;
-                        font-family: Theme.mono;
-                        font-size: 56px;
-                        font-weight: 300;
-                        color: Theme.muted;
-                    }
+                ClockDisplay {
+                    face: root.clock-face;
+                    time-hm: root.time-hm;
+                    time-ss: root.time-ss;
+                    ampm: root.ampm;
+                    hour-label: root.hour-label;
+                    minute-label: root.minute-label;
+                    hour-tens: root.hour-tens;
+                    hour-ones: root.hour-ones;
+                    minute-tens: root.minute-tens;
+                    minute-ones: root.minute-ones;
+                    previous-minute: root.previous-minute;
+                    next-minute: root.next-minute;
+                    hour: root.hour;
+                    minute: root.minute;
+                    second: root.second;
+                    size: root.idle-clock-size;
                 }
             }
 
             Rectangle { vertical-stretch: 1; }
 
             Rectangle { height: Theme.hairline; background: Theme.line; }
-            Rectangle { height: 20px; }
-            Label { text: root.info-strip; color: Theme.text; height: 20px; }
-            Rectangle { height: 28px; }
+            Rectangle { height: 20 * Theme.u; }
+            Label { text: root.info-strip; color: Theme.text; height: 20 * Theme.u; }
+            Rectangle { height: 28 * Theme.u; }
             DayTimeline { progress: root.day-progress; markers: Dash.markers; }
         }
     }

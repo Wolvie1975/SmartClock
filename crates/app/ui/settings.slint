@@ -1,6 +1,59 @@
 import { Theme } from "theme.slint";
 import { Label } from "widgets/label.slint";
 import { TextButton, Check } from "widgets/controls.slint";
+import { ClockDisplay } from "widgets/clock-faces.slint";
+
+component ClockFaceOption inherits Rectangle {
+    in property <string> face;
+    in property <string> title;
+    in property <bool> selected;
+    callback choose(string);
+
+    horizontal-stretch: 1;
+    height: 144 * Theme.u;
+    border-radius: Theme.radius;
+    border-width: selected ? 2 * Theme.u : Theme.hairline;
+    border-color: selected ? Theme.accent-fill : Theme.line;
+    background: selected ? Theme.panel : transparent;
+
+    VerticalLayout {
+        padding: 8 * Theme.u;
+        spacing: 6 * Theme.u;
+        Rectangle {
+            vertical-stretch: 1;
+            HorizontalLayout {
+                alignment: center;
+                ClockDisplay {
+                    face: root.face;
+                    time-hm: "12:34";
+                    time-ss: "56";
+                    ampm: "PM";
+                    hour-label: "12";
+                    minute-label: "34";
+                    hour-tens: "1";
+                    hour-ones: "2";
+                    minute-tens: "3";
+                    minute-ones: "4";
+                    previous-minute: "33";
+                    next-minute: "35";
+                    hour: 12;
+                    minute: 34;
+                    second: 56;
+                    size: 36 * Theme.u;
+                }
+            }
+        }
+        Label {
+            text: root.title;
+            color: root.selected ? Theme.accent-text : Theme.text;
+            horizontal-alignment: center;
+        }
+    }
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.choose(root.face); }
+    }
+}
 
 export component SettingsScreen inherits Rectangle {
     in-out property <string> local-url: "http://127.0.0.1:11434";
@@ -15,24 +68,26 @@ export component SettingsScreen inherits Rectangle {
     in-out property <string> google-calendar-status: "NOT CONNECTED";
     in-out property <bool> google-tasks: true;
     in-out property <bool> google-busy: false;
+    in-out property <string> clock-face: "digital";
     in-out property <string> save-status: "";
 
     callback save(string, string, string, string, string, string, bool);
+    callback clock-face-changed(string);
     callback connect-google(string, bool);
     callback connect-calendar();
     callback disconnect-google();
 
-    VerticalLayout {
+    layout := VerticalLayout {
         padding-left: Theme.page-pad;
         padding-right: Theme.page-pad;
-        padding-top: 32px;
-        padding-bottom: 32px;
-        spacing: 20px;
+        padding-top: 20 * Theme.u;
+        padding-bottom: 20 * Theme.u;
+        spacing: 16 * Theme.u;
 
         Label {
-            text: "AI & MODELS";
+            text: "SETTINGS";
             color: Theme.text;
-            font-size: 24px;
+            font-size: 24 * Theme.u;
             font-weight: 600;
         }
 
@@ -40,34 +95,108 @@ export component SettingsScreen inherits Rectangle {
             border-width: 1px;
             border-color: Theme.line;
             background: Theme.panel;
-            border-radius: 8px;
+            border-radius: 8 * Theme.u;
 
             VerticalLayout {
-                padding-left: 20px;
-                padding-right: 20px;
-                padding-top: 20px;
-                padding-bottom: 20px;
-                spacing: 16px;
+                padding-left: 20 * Theme.u;
+                padding-right: 20 * Theme.u;
+                padding-top: 16 * Theme.u;
+                padding-bottom: 16 * Theme.u;
+                spacing: 12 * Theme.u;
+                Label {
+                    text: "APPEARANCE · CLOCK FACE · APPLIES TO DASHBOARD AND IDLE";
+                    color: Theme.muted;
+                }
+                HorizontalLayout {
+                    spacing: 10 * Theme.u;
+                    ClockFaceOption {
+                        face: "digital";
+                        title: "DIGITAL";
+                        selected: root.clock-face == self.face;
+                        choose(value) => {
+                            root.clock-face = value;
+                            root.clock-face-changed(value);
+                        }
+                    }
+                    ClockFaceOption {
+                        face: "chronograph";
+                        title: "CHRONOGRAPH";
+                        selected: root.clock-face == self.face;
+                        choose(value) => {
+                            root.clock-face = value;
+                            root.clock-face-changed(value);
+                        }
+                    }
+                    ClockFaceOption {
+                        face: "split-flap";
+                        title: "SPLIT-FLAP";
+                        selected: root.clock-face == self.face;
+                        choose(value) => {
+                            root.clock-face = value;
+                            root.clock-face-changed(value);
+                        }
+                    }
+                    ClockFaceOption {
+                        face: "tape";
+                        title: "TAPE";
+                        selected: root.clock-face == self.face;
+                        choose(value) => {
+                            root.clock-face = value;
+                            root.clock-face-changed(value);
+                        }
+                    }
+                }
+            }
+        }
+
+        fl := Flickable {
+            width: parent.width;
+            vertical-stretch: 1;
+            content-height: body.preferred-height;
+
+            body := VerticalLayout {
+                width: fl.width;
+                spacing: 20 * Theme.u;
+
+        Label {
+            text: "AI & MODELS";
+            color: Theme.text;
+            font-size: 24 * Theme.u;
+            font-weight: 600;
+        }
+
+        Rectangle {
+            border-width: 1px;
+            border-color: Theme.line;
+            background: Theme.panel;
+            border-radius: 8 * Theme.u;
+
+            VerticalLayout {
+                padding-left: 20 * Theme.u;
+                padding-right: 20 * Theme.u;
+                padding-top: 20 * Theme.u;
+                padding-bottom: 20 * Theme.u;
+                spacing: 16 * Theme.u;
                 Label {
                     text: "LOCAL MODEL";
                     color: Theme.muted;
                 }
                 HorizontalLayout {
-                    spacing: 12px;
+                    spacing: 12 * Theme.u;
                     Label {
-                        width: 130px;
+                        width: 130 * Theme.u;
                         text: "URL";
                         color: Theme.muted;
                     }
                     Rectangle {
-                        min-height: 36px;
+                        min-height: 36 * Theme.u;
                         background: Theme.bg;
                         border-width: 1px;
                         border-color: Theme.line;
-                        border-radius: 4px;
+                        border-radius: 4 * Theme.u;
                         TextInput {
-                            x: 8px;
-                            width: parent.width - 16px;
+                            x: 8 * Theme.u;
+                            width: parent.width - 16 * Theme.u;
                             vertical-alignment: center;
                             text: root.local-url;
                             edited => {
@@ -79,21 +208,21 @@ export component SettingsScreen inherits Rectangle {
                     }
                 }
                 HorizontalLayout {
-                    spacing: 12px;
+                    spacing: 12 * Theme.u;
                     Label {
-                        width: 130px;
+                        width: 130 * Theme.u;
                         text: "MODEL";
                         color: Theme.muted;
                     }
                     Rectangle {
-                        min-height: 36px;
+                        min-height: 36 * Theme.u;
                         background: Theme.bg;
                         border-width: 1px;
                         border-color: Theme.line;
-                        border-radius: 4px;
+                        border-radius: 4 * Theme.u;
                         TextInput {
-                            x: 8px;
-                            width: parent.width - 16px;
+                            x: 8 * Theme.u;
+                            width: parent.width - 16 * Theme.u;
                             vertical-alignment: center;
                             text: root.local-model;
                             edited => {
@@ -105,9 +234,9 @@ export component SettingsScreen inherits Rectangle {
                     }
                 }
                 HorizontalLayout {
-                    spacing: 12px;
+                    spacing: 12 * Theme.u;
                     Label {
-                        width: 130px;
+                        width: 130 * Theme.u;
                         text: "STATUS";
                         color: Theme.muted;
                     }
@@ -123,34 +252,34 @@ export component SettingsScreen inherits Rectangle {
             border-width: 1px;
             border-color: Theme.line;
             background: Theme.panel;
-            border-radius: 8px;
+            border-radius: 8 * Theme.u;
 
             VerticalLayout {
-                padding-left: 20px;
-                padding-right: 20px;
-                padding-top: 20px;
-                padding-bottom: 20px;
-                spacing: 16px;
+                padding-left: 20 * Theme.u;
+                padding-right: 20 * Theme.u;
+                padding-top: 20 * Theme.u;
+                padding-bottom: 20 * Theme.u;
+                spacing: 16 * Theme.u;
                 Label {
                     text: "CLOUD MODEL";
                     color: Theme.muted;
                 }
                 HorizontalLayout {
-                    spacing: 12px;
+                    spacing: 12 * Theme.u;
                     Label {
-                        width: 130px;
+                        width: 130 * Theme.u;
                         text: "PROVIDER";
                         color: Theme.muted;
                     }
                     Rectangle {
-                        min-height: 36px;
+                        min-height: 36 * Theme.u;
                         background: Theme.bg;
                         border-width: 1px;
                         border-color: Theme.line;
-                        border-radius: 4px;
+                        border-radius: 4 * Theme.u;
                         TextInput {
-                            x: 8px;
-                            width: parent.width - 16px;
+                            x: 8 * Theme.u;
+                            width: parent.width - 16 * Theme.u;
                             vertical-alignment: center;
                             text: root.cloud-provider;
                             edited => {
@@ -160,23 +289,23 @@ export component SettingsScreen inherits Rectangle {
                             color: Theme.text;
                         }
                     }
-                }
+                    }
                 HorizontalLayout {
-                    spacing: 12px;
+                    spacing: 12 * Theme.u;
                     Label {
-                        width: 130px;
+                        width: 130 * Theme.u;
                         text: "MODEL";
                         color: Theme.muted;
                     }
                     Rectangle {
-                        min-height: 36px;
+                        min-height: 36 * Theme.u;
                         background: Theme.bg;
                         border-width: 1px;
                         border-color: Theme.line;
-                        border-radius: 4px;
+                        border-radius: 4 * Theme.u;
                         TextInput {
-                            x: 8px;
-                            width: parent.width - 16px;
+                            x: 8 * Theme.u;
+                            width: parent.width - 16 * Theme.u;
                             vertical-alignment: center;
                             text: root.cloud-model;
                             edited => {
@@ -188,21 +317,21 @@ export component SettingsScreen inherits Rectangle {
                     }
                 }
                 HorizontalLayout {
-                    spacing: 12px;
+                    spacing: 12 * Theme.u;
                     Label {
-                        width: 130px;
+                        width: 130 * Theme.u;
                         text: "API KEY";
                         color: Theme.muted;
                     }
                     Rectangle {
-                        min-height: 36px;
+                        min-height: 36 * Theme.u;
                         background: Theme.bg;
                         border-width: 1px;
                         border-color: Theme.line;
-                        border-radius: 4px;
+                        border-radius: 4 * Theme.u;
                         TextInput {
-                            x: 8px;
-                            width: parent.width - 16px;
+                            x: 8 * Theme.u;
+                            width: parent.width - 16 * Theme.u;
                             vertical-alignment: center;
                             input-type: password;
                             text: root.api-key;
@@ -212,12 +341,12 @@ export component SettingsScreen inherits Rectangle {
                             }
                             color: Theme.text;
                         }
-                    }
-                }
+                        }
+                        }
                 HorizontalLayout {
-                    spacing: 12px;
+                    spacing: 12 * Theme.u;
                     Label {
-                        width: 130px;
+                        width: 130 * Theme.u;
                         text: "STATUS";
                         color: Theme.muted;
                     }
@@ -233,14 +362,14 @@ export component SettingsScreen inherits Rectangle {
             border-width: 1px;
             border-color: Theme.line;
             background: Theme.panel;
-            border-radius: 8px;
+            border-radius: 8 * Theme.u;
 
             VerticalLayout {
-                padding-left: 20px;
-                padding-right: 20px;
-                padding-top: 20px;
-                padding-bottom: 20px;
-                spacing: 16px;
+                padding-left: 20 * Theme.u;
+                padding-right: 20 * Theme.u;
+                padding-top: 20 * Theme.u;
+                padding-bottom: 20 * Theme.u;
+                spacing: 16 * Theme.u;
                 Label {
                     text: "GOOGLE ACCOUNTS";
                     color: Theme.muted;
@@ -256,21 +385,21 @@ export component SettingsScreen inherits Rectangle {
                     wrap: word-wrap;
                 }
                 HorizontalLayout {
-                    spacing: 12px;
+                    spacing: 12 * Theme.u;
                     Label {
-                        width: 130px;
+                        width: 130 * Theme.u;
                         text: "GOOGLE CLIENT ID";
                         color: Theme.muted;
                     }
                     Rectangle {
-                        min-height: 36px;
+                        min-height: 36 * Theme.u;
                         background: Theme.bg;
                         border-width: 1px;
                         border-color: Theme.line;
-                        border-radius: 4px;
+                        border-radius: 4 * Theme.u;
                         TextInput {
-                            x: 8px;
-                            width: parent.width - 16px;
+                            x: 8 * Theme.u;
+                            width: parent.width - 16 * Theme.u;
                             vertical-alignment: center;
                             text: root.google-client-id;
                             edited => {
@@ -282,7 +411,7 @@ export component SettingsScreen inherits Rectangle {
                     }
                 }
                 HorizontalLayout {
-                    spacing: 8px;
+                    spacing: 8 * Theme.u;
                     Check {
                         checked: root.google-tasks;
                         toggled => {
@@ -293,7 +422,7 @@ export component SettingsScreen inherits Rectangle {
                     Label { text: "SYNC UNTIMED REMINDERS WITH TASKS"; color: Theme.text; vertical-alignment: center; }
                 }
                 HorizontalLayout {
-                    spacing: 16px;
+                    spacing: 16 * Theme.u;
                     Label {
                         text: "TASKS · " + root.google-status;
                         color: Theme.accent-text;
@@ -315,7 +444,7 @@ export component SettingsScreen inherits Rectangle {
                     }
                 }
                 HorizontalLayout {
-                    spacing: 16px;
+                    spacing: 16 * Theme.u;
                     Label {
                         text: "CALENDAR · " + root.google-calendar-status;
                         color: Theme.accent-text;
@@ -333,17 +462,17 @@ export component SettingsScreen inherits Rectangle {
 
         HorizontalLayout {
             alignment: end;
-            spacing: 12px;
+            spacing: 12 * Theme.u;
             Label {
                 text: root.save-status;
                 color: root.save-status == "SAVE FAILED" ? Theme.muted : Theme.accent-text;
                 vertical-alignment: center;
             }
             Rectangle {
-                width: 170px;
-                height: 40px;
+                width: 170 * Theme.u;
+                height: 40 * Theme.u;
                 background: Theme.accent-fill;
-                border-radius: 8px;
+                border-radius: 8 * Theme.u;
                 Label {
                     text: "SAVE SETTINGS";
                     color: Theme.on-accent;
@@ -369,4 +498,6 @@ export component SettingsScreen inherits Rectangle {
             }
         }
     }
+}
+}
 }

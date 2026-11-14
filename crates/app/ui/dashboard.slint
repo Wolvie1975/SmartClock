@@ -1,5 +1,6 @@
 import { Theme } from "theme.slint";
 import { Label } from "widgets/label.slint";
+import { ClockDisplay } from "widgets/clock-faces.slint";
 import { DayTimeline } from "widgets/timeline.slint";
 import { TextButton, Toggle, Check } from "widgets/controls.slint";
 import { Dash, TimerRow, AlarmRow, ReminderRow, NewsItem } from "state.slint";
@@ -16,13 +17,13 @@ component Column inherits Rectangle {
     callback add();
 
     VerticalLayout {
-        padding-left: 24px;
-        padding-right: 24px;
+        padding-left: 24 * Theme.u;
+        padding-right: 24 * Theme.u;
         spacing: 0;
 
         HorizontalLayout {
             height: Theme.touch;
-            spacing: 12px;
+            spacing: 12 * Theme.u;
             Label { text: root.title; color: Theme.text; vertical-alignment: center; }
             Label { text: root.count; vertical-alignment: center; }
             Rectangle { horizontal-stretch: 1; }
@@ -31,14 +32,14 @@ component Column inherits Rectangle {
                 clicked => { root.add(); }
             }
         }
-        Rectangle { height: 12px; }
+        Rectangle { height: 12 * Theme.u; }
         Rectangle { height: Theme.hairline; background: Theme.line; }
         @children
     }
 }
 
 component Empty inherits Label {
-    height: 56px;
+    height: 56 * Theme.u;
     vertical-alignment: center;
 }
 
@@ -56,18 +57,18 @@ component Centered inherits VerticalLayout {
 
 component TimerItem inherits Rectangle {
     in property <TimerRow> item;
-    height: 72px;
+    height: 72 * Theme.u;
 
     HorizontalLayout {
-        spacing: 8px;
+        spacing: 8 * Theme.u;
         VerticalLayout {
             horizontal-stretch: 1;
             alignment: center;
-            spacing: 6px;
+            spacing: 6 * Theme.u;
             Text {
                 text: item.name;
                 font-family: Theme.sans;
-                font-size: 18px;
+                font-size: 18 * Theme.u;
                 color: Theme.text;
                 overflow: elide;
             }
@@ -75,9 +76,9 @@ component TimerItem inherits Rectangle {
         }
         Text {
             text: item.remaining;
-            min-width: 112px;
+            min-width: 112 * Theme.u;
             font-family: Theme.mono;
-            font-size: 34px;
+            font-size: 34 * Theme.u;
             font-weight: 300;
             color: item.paused ? Theme.muted : Theme.text;
             horizontal-alignment: right;
@@ -99,8 +100,8 @@ component TimerItem inherits Rectangle {
     // progress
     Rectangle {
         x: 0;
-        y: parent.height - 3px;
-        height: 2px;
+        y: parent.height - 3 * Theme.u;
+        height: 2 * Theme.u;
         width: parent.width * item.progress;
         background: Theme.accent-fill;
     }
@@ -109,18 +110,18 @@ component TimerItem inherits Rectangle {
 
 component AlarmItem inherits Rectangle {
     in property <AlarmRow> item;
-    height: 72px;
+    height: 72 * Theme.u;
     property <color> fg: item.enabled ? Theme.text : Theme.muted;
 
     HorizontalLayout {
-        spacing: 10px;
+        spacing: 10 * Theme.u;
         HorizontalLayout {
-            spacing: 6px;
+            spacing: 6 * Theme.u;
             alignment: start;
             Text {
                 text: item.time;
                 font-family: Theme.mono;
-                font-size: 34px;
+                font-size: 34 * Theme.u;
                 font-weight: 300;
                 color: root.fg;
                 vertical-alignment: center;
@@ -130,11 +131,11 @@ component AlarmItem inherits Rectangle {
         VerticalLayout {
             horizontal-stretch: 1;
             alignment: center;
-            spacing: 6px;
+            spacing: 6 * Theme.u;
             Label { text: item.days; }
             if item.label != "": Text {
                 text: item.label;
-                font-size: 15px;
+                font-size: 15 * Theme.u;
                 color: root.fg;
                 overflow: elide;
             }
@@ -157,10 +158,10 @@ component AlarmItem inherits Rectangle {
 
 component ReminderItem inherits Rectangle {
     in property <ReminderRow> item;
-    height: 64px;
+    height: 64 * Theme.u;
 
     HorizontalLayout {
-        spacing: 6px;
+        spacing: 6 * Theme.u;
         Centered {
             Check {
                 checked: item.done;
@@ -170,15 +171,15 @@ component ReminderItem inherits Rectangle {
         VerticalLayout {
             horizontal-stretch: 1;
             alignment: center;
-            spacing: 6px;
+            spacing: 6 * Theme.u;
             Text {
                 text: item.text;
-                font-size: 17px;
+                font-size: 17 * Theme.u;
                 color: item.done ? Theme.muted : Theme.text;
                 overflow: elide;
             }
             if item.when != "" || item.tag != "": HorizontalLayout {
-                spacing: 10px;
+                spacing: 10 * Theme.u;
                 alignment: start;
                 Label { text: item.when; }
                 if item.tag != "": Label { text: item.tag; color: Theme.accent-text; }
@@ -200,14 +201,14 @@ component ReminderItem inherits Rectangle {
 // Floats over the dashboard just above the command bar. Grows with the reply up
 // to `max-body`, then the reply scrolls inside the card.
 component AnswerCard inherits Rectangle {
-    in property <length> max-body: 480px;
+    in property <length> max-body: 480 * Theme.u;
 
     background: Theme.panel;
     border-width: Theme.hairline;
     border-color: Theme.line;
     border-radius: Theme.radius;
-    drop-shadow-blur: 32px;
-    drop-shadow-offset-y: 8px;
+    drop-shadow-blur: 32 * Theme.u;
+    drop-shadow-offset-y: 8 * Theme.u;
     drop-shadow-color: Theme.dark ? #000000b0 : #00000040;
     height: layout.preferred-height;
 
@@ -215,12 +216,12 @@ component AnswerCard inherits Rectangle {
     TouchArea { }
 
     layout := VerticalLayout {
-        padding: 20px;
-        padding-top: 10px;
-        spacing: 12px;
+        padding: 20 * Theme.u;
+        padding-top: 10 * Theme.u;
+        spacing: 12 * Theme.u;
 
         HorizontalLayout {
-            spacing: 16px;
+            spacing: 16 * Theme.u;
             Label { text: Dash.answer-route; color: Theme.accent-text; vertical-alignment: center; }
             Label {
                 text: Dash.answer-question;
@@ -249,7 +250,7 @@ component AnswerCard inherits Rectangle {
             content-height: body.preferred-height;
             body := VerticalLayout {
                 width: fl.width;
-                spacing: 12px;
+                spacing: 12 * Theme.u;
                 if Dash.answer-actions != "": Label {
                     text: Dash.answer-actions;
                     color: Theme.text;
@@ -258,7 +259,7 @@ component AnswerCard inherits Rectangle {
                 if Dash.answer-text != "": Text {
                     text: Dash.answer-text;
                     font-family: Theme.sans;
-                    font-size: 20px;
+                    font-size: 20 * Theme.u;
                     color: Theme.text;
                     wrap: word-wrap;
                 }
@@ -267,7 +268,7 @@ component AnswerCard inherits Rectangle {
         }
         // Scroll hint when the reply is longer than the card.
         if body.preferred-height > root.max-body: Label {
-            text: fl.content-y < -(body.preferred-height - root.max-body - 4px) ? "END" : "SCROLL FOR MORE ↓";
+            text: fl.content-y < -(body.preferred-height - root.max-body - 4 * Theme.u) ? "END" : "SCROLL FOR MORE ↓";
             horizontal-alignment: right;
         }
     }
@@ -277,7 +278,7 @@ component AnswerCard inherits Rectangle {
 // Command bar
 
 component CommandBar inherits Rectangle {
-    height: 60px;
+    height: 60 * Theme.u;
     background: Theme.panel;
     border-width: Theme.hairline;
     border-color: input.has-focus ? Theme.accent-fill : Theme.line;
@@ -289,14 +290,14 @@ component CommandBar inherits Rectangle {
     }
 
     HorizontalLayout {
-        padding-left: 20px;
-        padding-right: 8px;
-        spacing: 16px;
+        padding-left: 20 * Theme.u;
+        padding-right: 8 * Theme.u;
+        spacing: 16 * Theme.u;
 
         Text {
             text: "›";
             font-family: Theme.mono;
-            font-size: 22px;
+            font-size: 22 * Theme.u;
             color: Theme.accent-text;
             vertical-alignment: center;
         }
@@ -307,7 +308,7 @@ component CommandBar inherits Rectangle {
                 height: parent.height;
                 text <=> Dash.command;
                 font-family: Theme.mono;
-                font-size: 18px;
+                font-size: 18 * Theme.u;
                 color: Theme.text;
                 selection-background-color: Theme.accent-fill;
                 selection-foreground-color: Theme.on-accent;
@@ -322,13 +323,13 @@ component CommandBar inherits Rectangle {
                 height: parent.height;
                 text: "TIMER 20M · ALARM 7AM WEEKDAYS · OR ASK ANYTHING";
                 font-family: Theme.mono;
-                font-size: 16px;
+                font-size: 16 * Theme.u;
                 color: Theme.muted;
                 vertical-alignment: center;
             }
         }
         if Dash.result != "": HorizontalLayout {
-            spacing: 14px;
+            spacing: 14 * Theme.u;
             if Dash.result-builtin: Label {
                 text: "BUILT-IN · NO AI USED";
                 color: Theme.accent-text;
@@ -351,6 +352,18 @@ export component Dashboard inherits Rectangle {
     in property <string> time-hm;
     in property <string> time-ss;
     in property <string> ampm;
+    in property <string> clock-face;
+    in property <string> hour-label;
+    in property <string> minute-label;
+    in property <string> hour-tens;
+    in property <string> hour-ones;
+    in property <string> minute-tens;
+    in property <string> minute-ones;
+    in property <string> previous-minute;
+    in property <string> next-minute;
+    in property <int> hour;
+    in property <int> minute;
+    in property <int> second;
     in property <string> date-label;
     in property <float> day-progress;
     in property <[NewsItem]> news-items;
@@ -365,38 +378,70 @@ export component Dashboard inherits Rectangle {
         bar.focus-input();
     }
 
+    property <length> side-pad: Theme.page-pad;
+    property <length> weather-width: 640 * Theme.u;
+    property <length> clock-room:
+        (root.width - 2 * root.side-pad) / 2;
+    property <length> dashboard-clock-size:
+        // ClockDisplay's layout width is 3.5 times its size.
+        min(Theme.clock-dashboard, max(0px, root.clock-room / 3.5));
+
     VerticalLayout {
         padding-left: Theme.page-pad;
         padding-right: Theme.page-pad;
-        padding-top: 20px;
-        padding-bottom: 32px;
-        spacing: 20px;
+        padding-top: 20 * Theme.u;
+        padding-bottom: 32 * Theme.u;
+        spacing: 20 * Theme.u;
 
-        // Clock + weather
-        HorizontalLayout {
-            spacing: 48px;
-            VerticalLayout {
-                horizontal-stretch: 1;
-                spacing: 0;
-                Label { text: root.date-label; color: Theme.text; }
+        top-row := Rectangle {
+            width: parent.width;
+            height: 560 * Theme.u;
+
+            weather := WeatherPanel {
+                width: root.weather-width;
+                height: parent.height - 48 * Theme.u;
+                x: parent.width / 2 + (parent.width / 2 - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                clip: true;
+            }
+
+            clock-group := VerticalLayout {
+                width: self.preferred-width;
+                height: self.preferred-height;
+                x: (parent.width / 2 - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                spacing: 16 * Theme.u;
+                Label {
+                    horizontal-stretch: 1;
+                    text: root.date-label;
+                    font-size: 15 * Theme.u;
+                    letter-spacing: 1.8 * Theme.u;
+                    color: Theme.muted;
+                    horizontal-alignment: center;
+                }
                 HorizontalLayout {
-                    spacing: 20px;
-                    alignment: start;
-                    Text {
-                        text: root.time-hm;
-                        font-family: Theme.mono;
-                        font-size: Theme.clock-dashboard;
-                        font-weight: 300;
-                        color: Theme.text;
-                    }
-                    Centered {
-                        spacing: 12px;
-                        Text { text: root.ampm; font-family: Theme.mono; font-size: 40px; color: Theme.accent-text; }
-                        Text { text: root.time-ss; font-family: Theme.mono; font-size: 40px; font-weight: 300; color: Theme.muted; }
+                    horizontal-stretch: 1;
+                    alignment: center;
+                    ClockDisplay {
+                        face: root.clock-face;
+                        time-hm: root.time-hm;
+                        time-ss: root.time-ss;
+                        ampm: root.ampm;
+                        hour-label: root.hour-label;
+                        minute-label: root.minute-label;
+                        hour-tens: root.hour-tens;
+                        hour-ones: root.hour-ones;
+                        minute-tens: root.minute-tens;
+                        minute-ones: root.minute-ones;
+                        previous-minute: root.previous-minute;
+                        next-minute: root.next-minute;
+                        hour: root.hour;
+                        minute: root.minute;
+                        second: root.second;
+                        size: root.dashboard-clock-size;
                     }
                 }
             }
-            WeatherPanel { width: 640px; }
         }
 
         DayTimeline {
@@ -474,6 +519,6 @@ export component Dashboard inherits Rectangle {
         x: Theme.page-pad;
         width: root.width - 2 * Theme.page-pad;
         max-body: root.height * 0.6;
-        y: bar.y - self.height - 12px;
+        y: bar.y - self.height - 12 * Theme.u;
     }
 }

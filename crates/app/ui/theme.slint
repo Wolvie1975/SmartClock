@@ -7,6 +7,8 @@ import "fonts/InterTight.ttf";
 
 export global Theme {
     in-out property <bool> dark: true;
+    // 1u is 1px at 1920x1080; AppWindow updates it as the window resizes.
+    in-out property <length> u: 1px;
 
     // Colors
     out property <color> bg:          dark ? #0E0E0C : #C8C6B7;
@@ -21,15 +23,16 @@ export global Theme {
     // Type
     out property <string> mono: "JetBrains Mono";
     out property <string> sans: "Inter Tight";
-    out property <length> clock-idle: 400px;       // weight 300
-    out property <length> clock-dashboard: 260px;  // weight 300
-    out property <length> countdown: 560px;        // timer takeover, weight 300
-    out property <length> label: 13px;             // uppercase mono, ~0.12em spacing
-    out property <length> label-spacing: 1.5px;
+    out property <length> clock-idle: 480 * u;       // weight 300
+    out property <length> clock-dashboard: 320 * u;  // weight 300
+    out property <length> clock-alarm: 400 * u;      // weight 300
+    out property <length> countdown: 560 * u;        // timer takeover, weight 300
+    out property <length> label: 13 * u;             // uppercase mono, ~0.12em spacing
+    out property <length> label-spacing: 1.5 * u;
 
     // Shape and layout
-    out property <length> radius: 4px;
+    out property <length> radius: 4 * u;
     out property <length> hairline: 1px;
-    out property <length> page-pad: 48px;
-    out property <length> touch: 44px;             // minimum target size
+    out property <length> page-pad: 48 * u;
+    out property <length> touch: 44 * u;             // minimum target size
 }

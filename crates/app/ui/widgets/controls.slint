@@ -17,8 +17,8 @@ export component TextButton inherits Rectangle {
     opacity: root.enabled ? 1 : 0.5;
 
     HorizontalLayout {
-        padding-left: 14px;
-        padding-right: 14px;
+        padding-left: 14 * Theme.u;
+        padding-right: 14 * Theme.u;
         Label {
             text: root.text;
             color: root.primary ? Theme.on-accent : Theme.text;
@@ -37,22 +37,22 @@ export component TextButton inherits Rectangle {
 export component Toggle inherits Rectangle {
     in property <bool> checked;
     callback toggled();
-    width: 52px;
+    width: 52 * Theme.u;
     height: Theme.touch;
 
     Rectangle {
-        width: 40px;
-        height: 22px;
+        width: 40 * Theme.u;
+        height: 22 * Theme.u;
         border-radius: Theme.radius;
         border-width: Theme.hairline;
         border-color: root.checked ? Theme.accent-fill : Theme.line;
         background: root.checked ? Theme.accent-fill : transparent;
         Rectangle {
-            width: 16px;
-            height: 16px;
-            y: 3px;
-            x: root.checked ? parent.width - self.width - 3px : 3px;
-            border-radius: 2px;
+            width: 16 * Theme.u;
+            height: 16 * Theme.u;
+            y: 3 * Theme.u;
+            x: root.checked ? parent.width - self.width - 3 * Theme.u : 3 * Theme.u;
+            border-radius: 2 * Theme.u;
             background: root.checked ? Theme.on-accent : Theme.muted;
             animate x { duration: 120ms; }
         }
@@ -71,9 +71,9 @@ export component Check inherits Rectangle {
     height: Theme.touch;
 
     Rectangle {
-        width: 20px;
-        height: 20px;
-        border-radius: 2px;
+        width: 20 * Theme.u;
+        height: 20 * Theme.u;
+        border-radius: 2 * Theme.u;
         border-width: Theme.hairline;
         border-color: root.checked ? Theme.accent-fill : Theme.muted;
         background: root.checked ? Theme.accent-fill : transparent;
@@ -81,7 +81,7 @@ export component Check inherits Rectangle {
             text: "✓";
             visible: root.checked;
             color: Theme.on-accent;
-            font-size: 14px;
+            font-size: 14 * Theme.u;
             horizontal-alignment: center;
             vertical-alignment: center;
         }

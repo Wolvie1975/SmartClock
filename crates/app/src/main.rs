@@ -25,6 +25,7 @@ const DEFAULT_OLLAMA_URL: &str = "http://127.0.0.1:11434";
 const DEFAULT_OLLAMA_MODEL: &str = "llama3.2:3b";
 const DEFAULT_CLOUD_PROVIDER: &str = "ANTHROPIC";
 const DEFAULT_CLOUD_MODEL: &str = "claude-opus-5-5";
+const DEFAULT_CLOCK_FACE: &str = "digital";
 /// Burn-in drift cycle on the idle screen, one step per minute (px).
 const DRIFT: [(f32, f32); 6] = [
     (0., 0.),
@@ -76,6 +77,18 @@ fn main() -> anyhow::Result<()> {
     }
     let theme = ui.global::<Theme>();
     theme.set_dark(store.get_setting("theme")?.as_deref() != Some("light"));
+    let saved_clock_face = store.get_setting("clock_face")?;
+    let clock_face = match saved_clock_face.as_deref() {
+        Some(face @ ("digital" | "chronograph" | "split-flap" | "tape" | "dot-matrix")) => {
+            face.to_string()
+        }
+        None => DEFAULT_CLOCK_FACE.to_string(),
+        Some(invalid) => {
+            tracing::warn!("unknown saved clock face {invalid:?}; using digital");
+            DEFAULT_CLOCK_FACE.to_string()
+        }
+    };
+    ui.set_clock_face(clock_face.into());
     if store.get_setting("start_on")?.as_deref() == Some("idle") {
         ui.set_screen(Screen::Idle);
     }
@@ -254,6 +267,38 @@ fn main() -> anyhow::Result<()> {
         }
     });
 
+    ui.on_clock_face_changed({
+        let weak = ui.as_weak();
+        let store = store.clone();
+        move |face: slint::SharedString| {
+            let face = face.as_str();
+            if !matches!(
+                face,
+                "digital" | "chronograph" | "split-flap" | "tape" | "dot-matrix"
+            ) {
+                tracing::error!("ignoring unknown clock face selection {face:?}");
+                if let Some(ui) = weak.upgrade() {
+                    ui.set_settings_save_status("SAVE FAILED".into());
+                }
+                return;
+            }
+            match store.set_setting("clock_face", face) {
+                Ok(()) => {
+                    if let Some(ui) = weak.upgrade() {
+                        ui.set_clock_face(face.into());
+                        ui.set_settings_save_status("SAVED".into());
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("saving clock face failed: {e}");
+                    if let Some(ui) = weak.upgrade() {
+                        ui.set_settings_save_status("SAVE FAILED".into());
+                    }
+                }
+            }
+        }
+    });
+
     {
         let weak = ui.as_weak();
         let store = store.clone();
@@ -287,6 +332,17 @@ fn main() -> anyhow::Result<()> {
                 0 => 12,
                 h => h,
             };
+            ui.set_clock_hour(h12 as i32);
+            ui.set_clock_minute(now.minute() as i32);
+            ui.set_clock_second(now.second() as i32);
+            ui.set_hour_label(format!("{h12:02}").into());
+            ui.set_minute_label(format!("{:02}", now.minute()).into());
+            ui.set_hour_tens((h12 / 10).to_string().into());
+            ui.set_hour_ones((h12 % 10).to_string().into());
+            ui.set_minute_tens((now.minute() / 10).to_string().into());
+            ui.set_minute_ones((now.minute() % 10).to_string().into());
+            ui.set_previous_minute(format!("{:02}", (now.minute() + 59) % 60).into());
+            ui.set_next_minute(format!("{:02}", (now.minute() + 1) % 60).into());
             ui.set_time_hm(format!("{}:{:02}", h12, now.minute()).into());
             ui.set_time_ss(format!("{:02}", now.second()).into());
             ui.set_ampm(if now.hour() >= 12 { "PM" } else { "AM" }.into());

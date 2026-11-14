@@ -6,12 +6,12 @@ component StoryCard inherits Rectangle {
     in property <NewsItem> item;
     callback open();
 
-    height: 112px;
+    height: 112 * Theme.u;
 
     VerticalLayout {
-        spacing: 8px;
+        spacing: 8 * Theme.u;
         HorizontalLayout {
-            height: 24px;
+            height: 24 * Theme.u;
             Label {
                 text: root.item.source;
                 color: Theme.accent-text;
@@ -27,7 +27,7 @@ component StoryCard inherits Rectangle {
         Text {
             text: root.item.title;
             font-family: Theme.sans;
-            font-size: 21px;
+            font-size: 21 * Theme.u;
             color: ta.has-hover ? Theme.accent-text : Theme.text;
             wrap: word-wrap;
             overflow: elide;
@@ -57,13 +57,13 @@ export component NewsColumn inherits VerticalLayout {
     in property <bool> offline;
     callback open-story(string);
 
-    padding-left: 24px;
-    padding-right: 24px;
+    padding-left: 24 * Theme.u;
+    padding-right: 24 * Theme.u;
     spacing: 0;
 
     HorizontalLayout {
         height: Theme.touch;
-        spacing: 12px;
+        spacing: 12 * Theme.u;
         Label { text: "NEWS"; color: Theme.text; vertical-alignment: center; }
         Rectangle { horizontal-stretch: 1; }
         Label {
@@ -72,7 +72,7 @@ export component NewsColumn inherits VerticalLayout {
             vertical-alignment: center;
         }
     }
-    Rectangle { height: 12px; }
+    Rectangle { height: 12 * Theme.u; }
     Rectangle { height: Theme.hairline; background: Theme.line; }
 
     news-list := Flickable {
@@ -82,7 +82,7 @@ export component NewsColumn inherits VerticalLayout {
             width: news-list.width;
             if root.items.length == 0: Label {
                 text: root.offline ? "NO STORIES CACHED" : "LOADING STORIES…";
-                height: 96px;
+                height: 96 * Theme.u;
                 vertical-alignment: center;
             }
             for item in root.items: StoryCard {

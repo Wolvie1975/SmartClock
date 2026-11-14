@@ -10,38 +10,56 @@ export component WeatherPanel inherits Rectangle {
 
     if !Weather.has-data: VerticalLayout {
         alignment: center;
-        spacing: 12px;
-        Label { text: Weather.place == "" ? "WEATHER" : "WEATHER · " + Weather.place; color: Theme.text; horizontal-alignment: center; }
-        Label { text: Weather.message; horizontal-alignment: center; }
+        padding: 24 * Theme.u;
+        spacing: 12 * Theme.u;
+        Label {
+            text: Weather.place == "" ? "WEATHER" : "WEATHER · " + Weather.place;
+            color: Theme.text;
+            horizontal-alignment: center;
+            overflow: elide;
+        }
+        Label { text: Weather.message; horizontal-alignment: center; overflow: elide; }
     }
 
     if Weather.has-data: VerticalLayout {
-        padding: 20px;
-        padding-top: 16px;
-        spacing: 12px;
+        padding: 24 * Theme.u;
+        spacing: 12 * Theme.u;
 
         HorizontalLayout {
-            Label { text: "WEATHER · " + Weather.place; color: Theme.text; }
+            Label {
+                horizontal-stretch: 1;
+                text: "WEATHER · " + Weather.place;
+                color: Theme.text;
+                overflow: elide;
+            }
             Rectangle { horizontal-stretch: 1; }
-            Label { text: Weather.updated; }
+            Label { text: Weather.updated; overflow: elide; }
         }
 
         // Now
         HorizontalLayout {
-            spacing: 20px;
+            spacing: 20 * Theme.u;
             Text {
                 text: Weather.temp;
                 font-family: Theme.mono;
-                font-size: 84px;
+                font-size: 84 * Theme.u;
                 font-weight: 300;
                 color: Theme.text;
                 vertical-alignment: center;
             }
             VerticalLayout {
+                horizontal-stretch: 1;
                 alignment: center;
-                spacing: 8px;
-                Text { text: Weather.condition; font-family: Theme.mono; font-size: 18px; color: Theme.accent-text; letter-spacing: 1.5px; }
-                Label { text: Weather.details; }
+                spacing: 8 * Theme.u;
+                Text {
+                    text: Weather.condition;
+                    font-family: Theme.mono;
+                    font-size: 18 * Theme.u;
+                    color: Theme.accent-text;
+                    letter-spacing: 1.5 * Theme.u;
+                    overflow: elide;
+                }
+                Label { text: Weather.details; overflow: elide; }
                 Label { text: Weather.hilo; color: Theme.text; }
             }
         }
@@ -51,40 +69,40 @@ export component WeatherPanel inherits Rectangle {
         HorizontalLayout {
             for h in Weather.hours: VerticalLayout {
                 horizontal-stretch: 1;
-                spacing: 4px;
-                Label { text: h.hour; horizontal-alignment: center; }
-                Text { text: h.temp; font-family: Theme.mono; font-size: 18px; color: Theme.text; horizontal-alignment: center; }
-                Label { text: h.precip == "" ? " " : h.precip; color: Theme.accent-text; horizontal-alignment: center; }
+                spacing: 4 * Theme.u;
+                Label { text: h.hour; horizontal-alignment: center; overflow: elide; }
+                Text { text: h.temp; font-family: Theme.mono; font-size: 18 * Theme.u; color: Theme.text; horizontal-alignment: center; overflow: elide; }
+                Label { text: h.precip == "" ? " " : h.precip; color: Theme.accent-text; horizontal-alignment: center; overflow: elide; }
             }
         }
 
         // Today and tomorrow
         Rectangle { height: Theme.hairline; background: Theme.line; }
         VerticalLayout {
-            spacing: 2px;
+            spacing: 2 * Theme.u;
             for d in Weather.days: HorizontalLayout {
-                height: 22px;
-                spacing: 12px;
-                Label { text: d.day; width: 56px; vertical-alignment: center; color: Theme.text; }
-                Label { text: d.condition; width: 150px; vertical-alignment: center; overflow: elide; }
-                Label { text: d.lo; width: 40px; horizontal-alignment: right; vertical-alignment: center; }
+                height: 22 * Theme.u;
+                spacing: 12 * Theme.u;
+                Label { text: d.day; width: 64 * Theme.u; vertical-alignment: center; color: Theme.text; overflow: elide; }
+                Label { text: d.condition; width: 120 * Theme.u; vertical-alignment: center; overflow: elide; }
+                Label { text: d.lo; width: 40 * Theme.u; horizontal-alignment: right; vertical-alignment: center; }
                 Rectangle {
                     horizontal-stretch: 1;
                     Rectangle {
                         y: (parent.height - self.height) / 2;
-                        height: 2px;
+                        height: 2 * Theme.u;
                         background: Theme.line;
                     }
                     Rectangle {
                         x: parent.width * d.start;
-                        width: max(6px, parent.width * (d.end - d.start));
+                        width: max(6 * Theme.u, parent.width * (d.end - d.start));
                         y: (parent.height - self.height) / 2;
-                        height: 6px;
-                        border-radius: 3px;
+                        height: 6 * Theme.u;
+                        border-radius: 3 * Theme.u;
                         background: Theme.accent-fill;
                     }
                 }
-                Label { text: d.hi; width: 40px; vertical-alignment: center; color: Theme.text; }
+                Label { text: d.hi; width: 40 * Theme.u; vertical-alignment: center; color: Theme.text; }
             }
         }
     }

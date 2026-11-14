@@ -1,0 +1,343 @@
+import { Theme } from "../theme.slint";
+
+component DotRow inherits Rectangle {
+    in property <int> mask;
+    in property <length> dot-size;
+    in property <length> gap-size;
+
+    width: dot-size * 5 + gap-size * 4;
+    height: dot-size;
+
+    HorizontalLayout {
+        spacing: root.gap-size;
+        for col in 5: Rectangle {
+            width: dot-size;
+            height: dot-size;
+            border-radius: dot-size / 2;
+            background: Math.mod(root.mask, col == 0 ? 32 : (col == 1 ? 16 : (col == 2 ? 8 : (col == 3 ? 4 : 2)))) >=
+                (col == 0 ? 16 : (col == 1 ? 8 : (col == 2 ? 4 : (col == 3 ? 2 : 1))))
+                ? Theme.accent-fill : Theme.line;
+        }
+    }
+}
+
+component DotDigit inherits Rectangle {
+    in property <string> digit;
+    in property <length> dot-size;
+    in property <length> gap-size;
+
+    property <[int]> rows: root.digit == "0" ? [14, 17, 17, 17, 17, 17, 14]
+        : root.digit == "1" ? [4, 12, 4, 4, 4, 4, 14]
+        : root.digit == "2" ? [14, 17, 1, 2, 4, 8, 31]
+        : root.digit == "3" ? [30, 1, 1, 14, 1, 1, 30]
+        : root.digit == "4" ? [17, 17, 17, 31, 1, 1, 1]
+        : root.digit == "5" ? [31, 16, 16, 30, 1, 1, 30]
+        : root.digit == "6" ? [14, 16, 16, 30, 17, 17, 14]
+        : root.digit == "7" ? [31, 1, 2, 4, 8, 8, 8]
+        : root.digit == "8" ? [14, 17, 17, 14, 17, 17, 14]
+        : [14, 17, 17, 15, 1, 1, 14];
+
+    width: dot-size * 5 + gap-size * 4;
+    height: dot-size * 7 + gap-size * 6;
+
+    for row in 7: DotRow {
+        y: row * (root.dot-size + root.gap-size);
+        mask: root.rows[row];
+        dot-size: root.dot-size;
+        gap-size: root.gap-size;
+    }
+}
+
+export component ClockDisplay inherits Rectangle {
+    in property <string> face: "digital";
+    in property <string> time-hm;
+    in property <string> time-ss;
+    in property <string> ampm;
+    in property <string> hour-label;
+    in property <string> minute-label;
+    in property <string> hour-tens;
+    in property <string> hour-ones;
+    in property <string> minute-tens;
+    in property <string> minute-ones;
+    in property <string> previous-minute;
+    in property <string> next-minute;
+    in property <int> hour;
+    in property <int> minute;
+    in property <int> second;
+    in property <length> size: Theme.clock-dashboard;
+    property <length> dial-size: root.size * 1.15;
+
+    width: size * 3.5;
+    height: size * 1.25;
+    background: transparent;
+
+    if face == "digital": HorizontalLayout {
+        alignment: start;
+        spacing: size * 0.06;
+        Text {
+            text: root.time-hm;
+            font-family: Theme.mono;
+            font-size: root.size;
+            font-weight: 300;
+            color: Theme.text;
+            vertical-alignment: center;
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: root.size * 0.04;
+            Text {
+                text: root.ampm;
+                font-family: Theme.mono;
+                font-size: root.size * 0.16;
+                font-weight: 400;
+                color: Theme.accent-text;
+            }
+            Text {
+                text: root.time-ss;
+                font-family: Theme.mono;
+                font-size: root.size * 0.16;
+                font-weight: 300;
+                color: Theme.muted;
+            }
+        }
+    }
+
+    if face == "chronograph": Rectangle {
+        x: (root.width - root.dial-size) / 2;
+        y: (root.height - root.dial-size) / 2;
+        width: root.dial-size;
+        height: root.dial-size;
+        border-radius: root.dial-size / 2;
+        border-width: max(2 * Theme.u, root.dial-size / 160);
+        border-color: Theme.line;
+
+        Text {
+            x: parent.width / 2 - self.width / 2;
+            y: 0;
+            text: "12";
+            font-family: Theme.mono;
+            font-size: root.dial-size / 14;
+            color: Theme.text;
+        }
+        Text {
+            x: parent.width - self.width - root.dial-size / 16;
+            y: parent.height / 2 - self.height / 2;
+            text: "3";
+            font-family: Theme.mono;
+            font-size: root.dial-size / 14;
+            color: Theme.text;
+        }
+        Text {
+            x: parent.width / 2 - self.width / 2;
+            y: parent.height - self.height - root.dial-size / 28;
+            text: "6";
+            font-family: Theme.mono;
+            font-size: root.dial-size / 14;
+            color: Theme.text;
+        }
+        Text {
+            x: root.dial-size / 16;
+            y: parent.height / 2 - self.height / 2;
+            text: "9";
+            font-family: Theme.mono;
+            font-size: root.dial-size / 14;
+            color: Theme.text;
+        }
+        Rectangle {
+            x: parent.width / 2 - root.dial-size / 180;
+            y: parent.height * 0.20;
+            width: max(2 * Theme.u, root.dial-size / 90);
+            height: parent.height * 0.32;
+            border-radius: root.dial-size / 180;
+            background: Theme.text;
+            transform-origin: { x: self.width / 2, y: self.height };
+            transform-rotation: (Math.mod(root.hour, 12) * 30 + root.minute / 2) * 1deg;
+        }
+        Rectangle {
+            x: parent.width / 2 - root.dial-size / 240;
+            y: parent.height * 0.12;
+            width: max(2 * Theme.u, root.dial-size / 120);
+            height: parent.height * 0.38;
+            border-radius: root.dial-size / 180;
+            background: Theme.accent-text;
+            transform-origin: { x: self.width / 2, y: self.height };
+            transform-rotation: (root.minute * 6) * 1deg;
+        }
+        Rectangle {
+            x: parent.width / 2 - root.dial-size / 360;
+            y: parent.height * 0.08;
+            width: max(1px, root.dial-size / 180);
+            height: parent.height * 0.44;
+            background: Theme.muted;
+            transform-origin: { x: self.width / 2, y: self.height };
+            transform-rotation: (root.second * 6) * 1deg;
+        }
+        Rectangle {
+            x: parent.width / 2 - root.dial-size / 36;
+            y: parent.height / 2 - root.dial-size / 36;
+            width: root.dial-size / 18;
+            height: root.dial-size / 18;
+            border-radius: root.dial-size / 36;
+            background: Theme.accent-fill;
+        }
+    }
+    if face == "chronograph": VerticalLayout {
+        x: root.width / 2 + root.dial-size * 0.58;
+        y: root.height / 2 - root.size * 0.14;
+        spacing: root.size * 0.03;
+        Text {
+            text: root.time-ss;
+            font-family: Theme.mono;
+            font-size: root.size * 0.2;
+            color: Theme.muted;
+        }
+        Text {
+            text: root.ampm;
+            font-family: Theme.mono;
+            font-size: root.size * 0.16;
+            color: Theme.accent-text;
+        }
+    }
+
+    if face == "split-flap": HorizontalLayout {
+        alignment: center;
+        spacing: root.size * 0.06;
+        for value in [root.hour-label, root.minute-label]: Rectangle {
+            width: root.size * 0.88;
+            height: root.size * 0.94;
+            border-radius: root.size / 36;
+            border-width: Theme.hairline;
+            border-color: Theme.line;
+            background: Theme.panel;
+
+            Text {
+                x: 0;
+                y: parent.height / 2 - self.height / 2;
+                width: parent.width;
+                text: value;
+                font-family: Theme.mono;
+                font-size: root.size * 0.7;
+                font-weight: 300;
+                color: Theme.text;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            Rectangle {
+                x: 0;
+                y: parent.height / 2 - max(1px, root.size / 240);
+                width: parent.width;
+                height: max(1px, root.size / 120);
+                background: Theme.bg;
+                opacity: 0.8;
+            }
+        }
+        Text {
+            text: root.time-ss;
+            font-family: Theme.mono;
+            font-size: root.size * 0.2;
+            color: Theme.muted;
+            vertical-alignment: center;
+        }
+        Text {
+            text: root.ampm;
+            font-family: Theme.mono;
+            font-size: root.size * 0.16;
+            color: Theme.accent-text;
+            vertical-alignment: center;
+        }
+    }
+
+    if face == "tape": HorizontalLayout {
+        alignment: center;
+        spacing: root.size * 0.12;
+        Text {
+            text: root.previous-minute;
+            font-family: Theme.mono;
+            font-size: root.size * 0.25;
+            color: Theme.muted;
+            vertical-alignment: center;
+        }
+        Rectangle {
+            width: root.size * 2.4;
+            height: root.size * 0.72;
+            border-width: Theme.hairline;
+            border-color: Theme.line;
+            background: Theme.panel;
+
+            VerticalLayout {
+                padding-left: root.size * 0.12;
+                padding-right: root.size * 0.12;
+                spacing: root.size * 0.02;
+                Text {
+                    text: "HOUR  /  MINUTE";
+                    font-family: Theme.mono;
+                    font-size: root.size * 0.075;
+                    letter-spacing: root.size * 0.012;
+                    color: Theme.muted;
+                    horizontal-alignment: center;
+                }
+                HorizontalLayout {
+                    alignment: center;
+                    spacing: root.size * 0.1;
+                    Text {
+                        text: root.time-hm;
+                        font-family: Theme.mono;
+                        font-size: root.size * 0.54;
+                        font-weight: 300;
+                        color: Theme.text;
+                        vertical-alignment: center;
+                    }
+                    Text {
+                        text: root.time-ss;
+                        font-family: Theme.mono;
+                        font-size: root.size * 0.18;
+                        color: Theme.accent-text;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+        Text {
+            text: root.next-minute;
+            font-family: Theme.mono;
+            font-size: root.size * 0.25;
+            color: Theme.muted;
+            vertical-alignment: center;
+        }
+    }
+
+    if face == "dot-matrix": HorizontalLayout {
+        alignment: center;
+        spacing: root.size * 0.04;
+        DotDigit { digit: root.hour-tens; dot-size: root.size / 11; gap-size: root.size / 24; }
+        DotDigit { digit: root.hour-ones; dot-size: root.size / 11; gap-size: root.size / 24; }
+        VerticalLayout {
+            alignment: center;
+            spacing: root.size * 0.16;
+            for i in 2: Rectangle {
+                width: root.size / 18;
+                height: root.size / 18;
+                border-radius: root.size / 36;
+                background: Theme.accent-fill;
+            }
+        }
+        DotDigit { digit: root.minute-tens; dot-size: root.size / 11; gap-size: root.size / 24; }
+        DotDigit { digit: root.minute-ones; dot-size: root.size / 11; gap-size: root.size / 24; }
+        VerticalLayout {
+            alignment: center;
+            spacing: root.size * 0.04;
+            Text {
+                text: root.time-ss;
+                font-family: Theme.mono;
+                font-size: root.size * 0.2;
+                color: Theme.muted;
+            }
+            Text {
+                text: root.ampm;
+                font-family: Theme.mono;
+                font-size: root.size * 0.13;
+                color: Theme.accent-text;
+            }
+        }
+    }
+}

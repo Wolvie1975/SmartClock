@@ -6,6 +6,7 @@ A full-screen desktop clock and dashboard for a Fedora 45 laptop, written in **R
 |---|---|
 | Design canvas (all screens, dark + light, clickable) | https://claude.ai/artifact/LBAE37B37bFNrFxicYzqxG |
 | Design handoff doc (decisions, tokens, behavior) | https://claude.ai/artifact/1D8z1npXjRiowFfg6vKsbt |
+| Clock faces handoff (five faces, picker, dashboard and idle sizes) | [HANDOFF_Faces.md](HANDOFF_Faces.md) |
 
 > **Setting up a machine?** See [INSTALL.md](INSTALL.md). **Picking up the work?** Start with [HANDOFF.md](HANDOFF.md).
 >
@@ -218,13 +219,14 @@ These values match the handoff doc exactly. Text colors meet 4.5:1 contrast on t
 | `accent-text` | `#C6F36B` | `#3A520C` | Accent-colored text/icons |
 | `on-accent` | `#0E0E0C` | `#1A1A17` | Text on accent fills |
 
-Type: JetBrains Mono for numerals and labels, Inter Tight for body text. Clock sizes are 400 px (idle), 260 px (dashboard) and 560 px (timer countdown), all weight 300. Labels are 13 px uppercase mono with 1.5 px letter spacing (≈0.12em; Slint's `letter-spacing` takes a length). Write label text in uppercase in the source. Shape: 4 px radius, 1 px hairlines, 48 px page padding, 44 px minimum touch target.
+Type: JetBrains Mono for numerals and labels, Inter Tight for body text. Clock sizes are 480 px (idle), 320 px (dashboard), 400 px (alarm), and 560 px (timer countdown), all weight 300 at 1920×1080. UI dimensions scale with `Theme.u`, calculated from the smaller of the window's width and height ratios to 1920×1080; 1 px hairlines remain crisp. Labels are 13 px uppercase mono with 1.5 px letter spacing (≈0.12em; Slint's `letter-spacing` takes a length). Write label text in uppercase in the source. Shape: 4 px radius, 1 px hairlines, 48 px page padding, 44 px minimum touch target.
 
 > **Fonts:** JetBrains Mono ships as static weights (Light/Regular/Medium/Bold). Inter Tight is the Google Fonts **variable** font (`InterTight.ttf`), covering all weights in one file.
 
 ### 6.2 Window and screen switching (`ui/app.slint`)
 
 - `AppWindow` holds `screen` (idle / dashboard / assistant / settings) and `overlay` (none / timer / alarm).
+- `Theme.u` is updated on initialization and resize; the dashboard uses an anchored top row to center the clock and pin Weather 64 units from the right edge. Weather content is width-constrained and clipped to its panel.
 - Rust pushes clock strings, the day progress, the info strip and the burn-in drift every tick.
 - One full-window `TouchArea` raises `activity()` on `changed mouse-x`, `changed mouse-y` and `pointer-event`, so hover alone wakes the idle screen.
 
@@ -509,7 +511,8 @@ The launcher template is `data/smart-clock.desktop.in`; the install script fills
 - [x] Workspace, crates and VS Code config (sections 4–5)
 - [x] `theme.slint` tokens and fonts; theme toggle saved to settings
 - [x] AppWindow with idle ↔ dashboard switching and a 5-minute idle timeout (section 6)
-- [x] Idle screen: date / time zone / week row, 400 px clock, info strip, day timeline, burn-in drift
+- [x] Idle screen: date / time zone / week row, 480 px clock, info strip, day timeline, burn-in drift
+- [x] Clock face picker with Digital, Chronograph, Split-flap, Tape and Dot matrix faces shared by idle and dashboard
 - [x] `--windowed` flag; full screen by default
 - [x] GNOME idle inhibit (section 7)
 

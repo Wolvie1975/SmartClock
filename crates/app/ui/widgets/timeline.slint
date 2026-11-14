@@ -8,16 +8,16 @@ import { Marker } from "../state.slint";
 export component DayTimeline inherits Rectangle {
     in property <float> progress;
     in property <[Marker]> markers;
-    height: 76px;
+    height: 76 * Theme.u;
 
     property <[string]> ticks: ["12A", "3A", "6A", "9A", "12P", "3P", "6P", "9P", "12A"];
-    property <length> caption-h: 20px;
+    property <length> caption-h: 20 * Theme.u;
 
     // Alarm captions: "7:00 AM" centered over the marker, clamped to the bar's ends.
     for m in root.markers: Text {
         visible: m.kind == 0;
         y: 0;
-        height: root.caption-h - 4px;
+        height: root.caption-h - 4 * Theme.u;
         x: max(0px, min(root.width - self.width, root.width * m.pos - self.width / 2));
         text: m.label;
         font-family: Theme.mono;
@@ -29,7 +29,7 @@ export component DayTimeline inherits Rectangle {
 
     bar := Rectangle {
         y: root.caption-h;
-        height: 20px;
+        height: 20 * Theme.u;
         border-width: Theme.hairline;
         border-color: Theme.line;
         border-radius: Theme.radius;
@@ -47,10 +47,10 @@ export component DayTimeline inherits Rectangle {
         }
         for m in root.markers: Rectangle {
             x: parent.width * m.pos - self.width / 2;
-            width: m.kind == 0 ? 4px : 6px;
-            height: m.kind == 0 ? parent.height : 6px;
+            width: m.kind == 0 ? 4 * Theme.u : 6 * Theme.u;
+            height: m.kind == 0 ? parent.height : 6 * Theme.u;
             y: m.kind == 0 ? 0 : (parent.height - self.height) / 2;
-            border-radius: m.kind == 0 ? 0 : 3px;
+            border-radius: m.kind == 0 ? 0 : 3 * Theme.u;
             background: m.kind == 0 ? (m.later ? Theme.muted : Theme.accent-fill)
                 : m.kind == 1 ? Theme.text
                 : m.kind == 3 ? Theme.accent-text : Theme.muted;
@@ -58,13 +58,13 @@ export component DayTimeline inherits Rectangle {
         // now marker
         Rectangle {
             x: parent.width * root.progress - 1px;
-            width: 2px;
+            width: 2 * Theme.u;
             background: Theme.text;
         }
     }
 
     for t[i] in root.ticks: Label {
-        y: bar.y + bar.height + 10px;
+        y: bar.y + bar.height + 10 * Theme.u;
         x: i == 0 ? 0 : i == 8 ? root.width - self.width : root.width * i / 8 - self.width / 2;
         text: t;
     }

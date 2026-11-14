@@ -20,8 +20,8 @@ component Tab inherits Rectangle {
     min-width: Theme.touch;
     height: Theme.touch;
     HorizontalLayout {
-        padding-left: 4px;
-        padding-right: 4px;
+        padding-left: 4 * Theme.u;
+        padding-right: 4 * Theme.u;
         Label {
             text: root.text;
             vertical-alignment: center;
@@ -29,8 +29,8 @@ component Tab inherits Rectangle {
         }
     }
     Rectangle {
-        y: parent.height - 2px;
-        height: 2px;
+        y: parent.height - 2 * Theme.u;
+        height: 2 * Theme.u;
         background: root.active ? Theme.accent-fill : transparent;
     }
     ta := TouchArea { clicked => { root.clicked(); } }
@@ -43,6 +43,10 @@ export component AppWindow inherits Window {
     background: Theme.bg;
     default-font-family: Theme.sans;
 
+    init => { Theme.u = min(self.width / 1920, self.height / 1080); }
+    changed width => { Theme.u = min(self.width / 1920, self.height / 1080); }
+    changed height => { Theme.u = min(self.width / 1920, self.height / 1080); }
+
     in-out property <Screen> screen: Screen.dashboard;
     in-out property <Overlay> overlay: Overlay.none;
 
@@ -50,6 +54,18 @@ export component AppWindow inherits Window {
     in property <string> time-hm: "12:00";
     in property <string> time-ss: "00";
     in property <string> ampm: "AM";
+    in-out property <string> clock-face: "digital";
+    in property <string> hour-label: "12";
+    in property <string> minute-label: "00";
+    in property <string> hour-tens: "1";
+    in property <string> hour-ones: "2";
+    in property <string> minute-tens: "0";
+    in property <string> minute-ones: "0";
+    in property <string> previous-minute: "59";
+    in property <string> next-minute: "01";
+    in property <int> clock-hour: 12;
+    in property <int> clock-minute: 0;
+    in property <int> clock-second: 0;
     in property <string> date-label: "";
     in property <string> tz-label: "";
     in property <string> week-label: "";
@@ -80,6 +96,7 @@ export component AppWindow inherits Window {
 
     callback activity();          // any pointer movement → reset idle timer
     callback toggle-theme();
+    callback clock-face-changed(string);
     callback quit();
     callback save-settings(string, string, string, string, string, string, bool);
     callback connect-google(string, bool);
@@ -100,6 +117,18 @@ export component AppWindow inherits Window {
             time-hm: root.time-hm;
             time-ss: root.time-ss;
             ampm: root.ampm;
+            clock-face: root.clock-face;
+            hour-label: root.hour-label;
+            minute-label: root.minute-label;
+            hour-tens: root.hour-tens;
+            hour-ones: root.hour-ones;
+            minute-tens: root.minute-tens;
+            minute-ones: root.minute-ones;
+            previous-minute: root.previous-minute;
+            next-minute: root.next-minute;
+            hour: root.clock-hour;
+            minute: root.clock-minute;
+            second: root.clock-second;
             date-label: root.date-label;
             tz-label: root.tz-label;
             week-label: root.week-label;
@@ -113,14 +142,14 @@ export component AppWindow inherits Window {
         if root.screen != Screen.idle: VerticalLayout {
             // Header: tabs + theme toggle
             Rectangle {
-                height: 64px;
+                height: 64 * Theme.u;
                 // Everything sits in one layout so each control only covers its own area.
                 HorizontalLayout {
                     padding-left: Theme.page-pad;
                     padding-right: Theme.page-pad;
-                    spacing: 32px;
+                    spacing: 32 * Theme.u;
                     Label { text: "SMART CLOCK"; color: Theme.text; vertical-alignment: center; }
-                    Rectangle { width: 32px; }
+                    Rectangle { width: 32 * Theme.u; }
                     Tab { text: "DASHBOARD"; active: root.screen == Screen.dashboard; clicked => { root.screen = Screen.dashboard; } }
                     Tab { text: "ASSISTANT"; active: root.screen == Screen.assistant; clicked => { root.screen = Screen.assistant; } }
                     Tab { text: "SETTINGS";  active: root.screen == Screen.settings;  clicked => { root.screen = Screen.settings; } }
@@ -142,7 +171,7 @@ export component AppWindow inherits Window {
                         }
                     }
                     if root.confirm-close: HorizontalLayout {
-                        spacing: 20px;
+                        spacing: 20 * Theme.u;
                         Label {
                             text: "CLOSE THE CLOCK? ALARMS WON'T RING WHILE IT'S CLOSED";
                             color: Theme.accent-text;
@@ -173,6 +202,18 @@ export component AppWindow inherits Window {
                 time-hm: root.time-hm;
                 time-ss: root.time-ss;
                 ampm: root.ampm;
+                clock-face: root.clock-face;
+                hour-label: root.hour-label;
+                minute-label: root.minute-label;
+                hour-tens: root.hour-tens;
+                hour-ones: root.hour-ones;
+                minute-tens: root.minute-tens;
+                minute-ones: root.minute-ones;
+                previous-minute: root.previous-minute;
+                next-minute: root.next-minute;
+                hour: root.clock-hour;
+                minute: root.clock-minute;
+                second: root.clock-second;
                 date-label: root.date-label;
                 day-progress: root.day-progress;
                 news-items: root.news-items;
@@ -182,6 +223,8 @@ export component AppWindow inherits Window {
             }
             if root.screen == Screen.assistant: AssistantScreen { }
             if root.screen == Screen.settings: SettingsScreen {
+                vertical-stretch: 1;
+                clock-face: root.clock-face;
                 local-url: root.ai-local-url;
                 local-model: root.ai-local-model;
                 cloud-provider: root.ai-cloud-provider;
@@ -195,6 +238,10 @@ export component AppWindow inherits Window {
                 google-tasks: root.google-tasks;
                 google-busy: root.google-busy;
                 save-status: root.settings-save-status;
+                clock-face-changed(face) => {
+                    root.clock-face = face;
+                    root.clock-face-changed(face);
+                }
                 save(local_url, local_model, cloud_provider, cloud_model, api_key, google_client_id, google_tasks) => {
                     root.save-settings(local_url, local_model, cloud_provider, cloud_model, api_key, google_client_id, google_tasks);
                 }
