@@ -71,7 +71,7 @@ The model download is roughly 2 GB. It runs locally after download; the assistan
 From the cloned repository:
 
 ```bash
-scripts/install-local.sh
+./scripts/install-local.sh
 ```
 
 This builds the optimized release on the destination and adds Smart Clock to that user's GNOME app menu. Search for **Smart Clock** to launch it. Re-run the same script after updating the source.
