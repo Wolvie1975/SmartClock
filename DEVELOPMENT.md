@@ -419,15 +419,36 @@ The News feed is not sent to either AI provider.
 
 ## 11. Voice
 
-| Step | Library | Notes |
-|---|---|---|
-| Capture | `cpal` | Default input, or the device chosen in Settings; 16 kHz mono f32 for Whisper |
-| Push to talk | UI | Hold the mic button, or hold SPACE while the window is focused |
-| Speech → text | `whisper-rs` (pinned) | Model chosen in Settings: tiny / base / small / medium (default base). Language auto or English |
-| Text → speech | Piper (separate process) | `piper --model <voice>.onnx --output-raw` → play the PCM with `cpal`. Speed 0.9× / 1.0× / 1.2× |
-| Wake word | later | openWakeWord or `rustpotter` + VAD; never Whisper running all the time |
+Phase 4 is planned but not implemented. Voice processing stays on-device; it does not call cloud AI.
 
-Store Whisper models and Piper voices in `~/.local/share/smart-clock/models/`.
+### 11.1 Push-to-talk and capture
+
+- Add a hold-to-record microphone control and a SPACE shortcut while the window is focused.
+- Capture only while the user is holding the control. Do not listen continuously or save recordings.
+- Use `cpal` with the selected input device, or the system default. Show an input-level meter in Settings → Voice & Mic.
+- Convert the device's sample format, channel count, and rate to 16 kHz mono `f32` for Whisper. Keep capture and processing off the UI thread.
+
+### 11.2 Local transcription and submission
+
+- Pin an exact `whisper-rs` version. Offer tiny / base / small / medium models, with base selected by default, and auto-detect or English language.
+- Keep model files under `~/.local/share/smart-clock/models/`. Provide clear model availability/download progress and errors; do not silently fall back if a requested model is missing.
+- After release, transcribe in the background and place the recognized text in the command field for review. Submit only when the user presses Enter.
+- Confirmed speech follows the existing offline clock-command parser and local assistant path. Voice must never send a transcript to a cloud provider.
+
+### 11.3 Speech replies
+
+- Piper is optional and runs as a separate process, not linked or bundled with the app. This avoids a native dependency and keeps its GPL-3.0 distribution implications separate.
+- Use the configured `.onnx` voice model and play Piper's raw PCM output through `cpal`.
+- Settings → Voice & Mic includes a speak-replies toggle, voice selection, a test-voice action, and 0.9× / 1.0× / 1.2× speed.
+- Missing Piper or a voice model must not disable capture or transcription; report the missing dependency clearly.
+
+### 11.4 Settings, dependencies, and verification
+
+Persist the input device, Whisper model, language, reply-speech toggle, Piper voice, and speech speed in the existing settings store. Do not store microphone audio.
+
+Fedora build dependencies: `alsa-lib-devel`, `clang`, `clang-devel`, and `cmake`. Piper is installed separately with `pipx install piper-tts`; neither Piper nor model weights are bundled.
+
+**Done when:** push-to-talk capture shows a working level meter, local Whisper produces editable text, Enter submits it through the local path, optional Piper can speak local replies at the selected speed, and missing devices/models/Piper produce actionable status instead of a crash.
 
 ---
 
@@ -535,9 +556,10 @@ The launcher template is `data/smart-clock.desktop.in`; the install script fills
 - [ ] Settings → AI & Models: local model (Ollama URL + model), cloud provider + model (key in the keyring)
 
 ### Phase 4: Voice
-- [ ] `cpal` capture and push to talk, with a level meter in Settings → Voice & Mic
-- [ ] `whisper-rs` transcription, then the same parser/AI path as typed input
-- [ ] Piper replies, voice test, speed
+- [ ] Push-to-talk via mic control or focused SPACE; `cpal` capture, selected/default device, and a Settings level meter
+- [ ] Pinned `whisper-rs`; local model selection/download, 16 kHz mono conversion, and editable transcript review
+- [ ] Submit confirmed transcripts through the offline parser and local assistant only; never route voice to cloud AI
+- [ ] Optional external Piper replies, voice test, and 0.9× / 1.0× / 1.2× speed
 
 ### Phase 5: Google
 - [x] Settings → Accounts: client ID, service selection, and connection status
