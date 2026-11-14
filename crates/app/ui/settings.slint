@@ -2,6 +2,7 @@ import { Theme } from "theme.slint";
 import { Label } from "widgets/label.slint";
 import { TextButton, Check } from "widgets/controls.slint";
 import { ClockDisplay } from "widgets/clock-faces.slint";
+import { Slider } from "std-widgets.slint";
 
 component ClockFaceOption inherits Rectangle {
     in property <string> face;
@@ -69,9 +70,13 @@ export component SettingsScreen inherits Rectangle {
     in-out property <bool> google-tasks: true;
     in-out property <bool> google-busy: false;
     in-out property <string> clock-face: "digital";
+    in-out property <bool> night-enabled: true;
+    in-out property <string> night-start: "10:00 PM";
+    in-out property <string> night-end: "6:00 AM";
+    in-out property <float> night-dim: 0.65;
     in-out property <string> save-status: "";
 
-    callback save(string, string, string, string, string, string, bool);
+    callback save(string, string, string, string, string, string, bool, bool, string, string, float);
     callback clock-face-changed(string);
     callback connect-google(string, bool);
     callback connect-calendar();
@@ -157,6 +162,99 @@ export component SettingsScreen inherits Rectangle {
             body := VerticalLayout {
                 width: fl.width;
                 spacing: 20 * Theme.u;
+
+        Rectangle {
+            border-width: 1px;
+            border-color: Theme.line;
+            background: Theme.panel;
+            border-radius: 8 * Theme.u;
+
+            VerticalLayout {
+                padding-left: 20 * Theme.u;
+                padding-right: 20 * Theme.u;
+                padding-top: 20 * Theme.u;
+                padding-bottom: 20 * Theme.u;
+                spacing: 12 * Theme.u;
+                Label { text: "NIGHT DIMMING"; color: Theme.muted; }
+                HorizontalLayout {
+                    spacing: 8 * Theme.u;
+                    Check {
+                        checked: root.night-enabled;
+                        toggled => {
+                            root.night-enabled = !root.night-enabled;
+                            root.save-status = "UNSAVED CHANGES";
+                        }
+                    }
+                    Label {
+                        text: "DIM SCREENSAVER DURING NIGHT HOURS";
+                        color: Theme.text;
+                        vertical-alignment: center;
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 12 * Theme.u;
+                    Label { width: 130 * Theme.u; text: "FROM"; color: Theme.muted; vertical-alignment: center; }
+                    Rectangle {
+                        horizontal-stretch: 1;
+                        min-height: 36 * Theme.u;
+                        background: Theme.bg;
+                        border-width: 1px;
+                        border-color: Theme.line;
+                        border-radius: 4 * Theme.u;
+                        TextInput {
+                            x: 8 * Theme.u;
+                            width: parent.width - 16 * Theme.u;
+                            vertical-alignment: center;
+                            enabled: root.night-enabled;
+                            text: root.night-start;
+                            edited => {
+                                root.night-start = self.text;
+                                root.save-status = "UNSAVED CHANGES";
+                            }
+                            color: Theme.text;
+                        }
+                    }
+                    Label { text: "TO"; color: Theme.muted; vertical-alignment: center; }
+                    Rectangle {
+                        horizontal-stretch: 1;
+                        min-height: 36 * Theme.u;
+                        background: Theme.bg;
+                        border-width: 1px;
+                        border-color: Theme.line;
+                        border-radius: 4 * Theme.u;
+                        TextInput {
+                            x: 8 * Theme.u;
+                            width: parent.width - 16 * Theme.u;
+                            vertical-alignment: center;
+                            enabled: root.night-enabled;
+                            text: root.night-end;
+                            edited => {
+                                root.night-end = self.text;
+                                root.save-status = "UNSAVED CHANGES";
+                            }
+                            color: Theme.text;
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 12 * Theme.u;
+                    Label { width: 130 * Theme.u; text: "DIM LEVEL"; color: Theme.muted; vertical-alignment: center; }
+                    Slider {
+                        horizontal-stretch: 1;
+                        minimum: 0;
+                        maximum: 0.9;
+                        value <=> root.night-dim;
+                        enabled: root.night-enabled;
+                        changed value => { root.save-status = "UNSAVED CHANGES"; }
+                    }
+                    Label { text: "0–90%"; color: Theme.muted; vertical-alignment: center; }
+                }
+                Label {
+                    text: "Times use the 12-hour format, for example 10:00 PM.";
+                    color: Theme.muted;
+                }
+            }
+        }
 
         Label {
             text: "AI & MODELS";
@@ -491,7 +589,11 @@ export component SettingsScreen inherits Rectangle {
                             root.cloud-model,
                             root.api-key,
                             root.google-client-id,
-                            root.google-tasks
+                            root.google-tasks,
+                            root.night-enabled,
+                            root.night-start,
+                            root.night-end,
+                            root.night-dim
                         );
                     }
                 }

@@ -12,6 +12,7 @@ mod dashboard;
 mod google_controller;
 mod inhibit;
 mod news_task;
+mod night;
 mod ringing;
 mod secrets;
 mod sound;
@@ -69,6 +70,17 @@ fn main() -> anyhow::Result<()> {
         .ok();
 
     let ui = AppWindow::new()?;
+    let night_settings = night::Settings::load(&store)?;
+    ui.set_night_enabled(night_settings.enabled);
+    ui.set_night_start(night_settings.start.clone().into());
+    ui.set_night_end(night_settings.end.clone().into());
+    ui.set_night_dim(night_settings.dim_level);
+    ui.set_night_mode(night::is_night(
+        night_settings.enabled,
+        &night_settings.start,
+        &night_settings.end,
+        Local::now().time(),
+    ));
     // Matches the launcher's file name and StartupWMClass, so GNOME shows the
     // right name and icon for the window. Needs the platform (created with the
     // window) and must happen before the window is shown.
@@ -189,13 +201,30 @@ fn main() -> anyhow::Result<()> {
               cloud_model: slint::SharedString,
               api_key: slint::SharedString,
               google_client_id: slint::SharedString,
-              google_tasks: bool| {
+              google_tasks: bool,
+              night_enabled: bool,
+              night_start: slint::SharedString,
+              night_end: slint::SharedString,
+              night_dim: f32| {
             let local_url = local_url.as_str().trim();
             let local_model = local_model.as_str().trim();
             let cloud_provider = cloud_provider.as_str().trim().to_uppercase();
             let cloud_model = cloud_model.as_str().trim();
             let api_key = api_key.as_str().trim();
             let google_client_id = google_client_id.as_str().trim();
+            let night_start = night_start.as_str().trim();
+            let night_end = night_end.as_str().trim();
+            if night::parse_12h(night_start).is_none()
+                || night::parse_12h(night_end).is_none()
+                || !night_dim.is_finite()
+                || !(0.0..=0.9).contains(&night_dim)
+            {
+                tracing::warn!("invalid night dimming settings; changes were not saved");
+                if let Some(ui) = weak.upgrade() {
+                    ui.set_settings_save_status("INVALID NIGHT SETTINGS".into());
+                }
+                return;
+            }
             let mut save_succeeded = true;
             if let Err(e) = store.set_setting("ollama_url", local_url) {
                 tracing::warn!("saving ollama_url failed: {e}");
@@ -212,6 +241,17 @@ fn main() -> anyhow::Result<()> {
             if let Err(e) = store.set_setting("cloud_model", cloud_model) {
                 tracing::warn!("saving cloud_model failed: {e}");
                 save_succeeded = false;
+            }
+            for (key, value) in [
+                ("night_enabled", night_enabled.to_string()),
+                ("night_start", night_start.to_owned()),
+                ("night_end", night_end.to_owned()),
+                ("night_dim_level", night_dim.to_string()),
+            ] {
+                if let Err(e) = store.set_setting(key, &value) {
+                    tracing::warn!(setting = key, "saving night dimming setting failed: {e}");
+                    save_succeeded = false;
+                }
             }
             let key_saved = match secrets::set_blocking(
                 "cloud-api-key",
@@ -252,6 +292,16 @@ fn main() -> anyhow::Result<()> {
                 ui.set_ai_api_key(api_key.into());
                 ui.set_google_client_id(google_client_id.into());
                 ui.set_google_tasks(google_tasks);
+                ui.set_night_enabled(night_enabled);
+                ui.set_night_start(night_start.into());
+                ui.set_night_end(night_end.into());
+                ui.set_night_dim(night_dim);
+                ui.set_night_mode(night::is_night(
+                    night_enabled,
+                    night_start,
+                    night_end,
+                    Local::now().time(),
+                ));
                 ui.set_settings_save_status(
                     if save_succeeded {
                         "SAVED"
@@ -317,6 +367,22 @@ fn main() -> anyhow::Result<()> {
             if let Err(e) = store.set_setting("theme", if dark { "dark" } else { "light" }) {
                 tracing::warn!("saving theme failed: {e}");
             }
+        });
+    }
+
+    let night_timer = Timer::default();
+    {
+        let weak = ui.as_weak();
+        night_timer.start(TimerMode::Repeated, Duration::from_secs(30), move || {
+            let Some(ui) = weak.upgrade() else { return };
+            let start = ui.get_night_start();
+            let end = ui.get_night_end();
+            ui.set_night_mode(night::is_night(
+                ui.get_night_enabled(),
+                start.as_str(),
+                end.as_str(),
+                Local::now().time(),
+            ));
         });
     }
 

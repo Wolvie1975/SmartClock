@@ -29,6 +29,8 @@ export component IdleScreen inherits Rectangle {
     in property <length> drift-x;   // burn-in offset
     in property <length> drift-y;
     in property <float> brightness: 1.0;
+    in property <bool> night-mode: false;
+    in property <float> dim-level: 0.65;
 
     background: Theme.bg;
 
@@ -85,5 +87,13 @@ export component IdleScreen inherits Rectangle {
             Rectangle { height: 28 * Theme.u; }
             DayTimeline { progress: root.day-progress; markers: Dash.markers; }
         }
+    }
+
+    Rectangle {
+        width: root.width;
+        height: root.height;
+        background: #000000;
+        opacity: root.night-mode ? root.dim-level : 0.0;
+        animate opacity { duration: 2s; }
     }
 }

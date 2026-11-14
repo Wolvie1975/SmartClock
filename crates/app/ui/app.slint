@@ -76,6 +76,11 @@ export component AppWindow inherits Window {
     in property <length> drift-x: 0;
     in property <length> drift-y: 0;
     in property <float> idle-brightness: 1.0;
+    in property <bool> night-enabled: true;
+    in property <string> night-start: "10:00 PM";
+    in property <string> night-end: "6:00 AM";
+    in property <float> night-dim: 0.65;
+    in property <bool> night-mode: false;
 
     in property <string> ai-local-url: "http://127.0.0.1:11434";
     in property <string> ai-local-model: "llama3.2:3b";
@@ -98,7 +103,7 @@ export component AppWindow inherits Window {
     callback toggle-theme();
     callback clock-face-changed(string);
     callback quit();
-    callback save-settings(string, string, string, string, string, string, bool);
+    callback save-settings(string, string, string, string, string, string, bool, bool, string, string, float);
     callback connect-google(string, bool);
     callback connect-calendar();
     callback disconnect-google();
@@ -137,6 +142,8 @@ export component AppWindow inherits Window {
             drift-x: root.drift-x;
             drift-y: root.drift-y;
             brightness: root.idle-brightness;
+            night-mode: root.night-mode;
+            dim-level: root.night-dim;
         }
 
         if root.screen != Screen.idle: VerticalLayout {
@@ -237,13 +244,17 @@ export component AppWindow inherits Window {
                 google-calendar-status: root.google-calendar-status;
                 google-tasks: root.google-tasks;
                 google-busy: root.google-busy;
+                night-enabled: root.night-enabled;
+                night-start: root.night-start;
+                night-end: root.night-end;
+                night-dim: root.night-dim;
                 save-status: root.settings-save-status;
                 clock-face-changed(face) => {
                     root.clock-face = face;
                     root.clock-face-changed(face);
                 }
-                save(local_url, local_model, cloud_provider, cloud_model, api_key, google_client_id, google_tasks) => {
-                    root.save-settings(local_url, local_model, cloud_provider, cloud_model, api_key, google_client_id, google_tasks);
+                save(local_url, local_model, cloud_provider, cloud_model, api_key, google_client_id, google_tasks, night_enabled, night_start, night_end, night_dim) => {
+                    root.save-settings(local_url, local_model, cloud_provider, cloud_model, api_key, google_client_id, google_tasks, night_enabled, night_start, night_end, night_dim);
                 }
                 connect_google(client_id, tasks) => {
                     root.connect-google(client_id, tasks);
